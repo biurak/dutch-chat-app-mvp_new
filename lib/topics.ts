@@ -141,7 +141,7 @@ export const topics: Topic[] = [
     ],
   },
 ]
-// new comment
+
 export const getTopicBySlug = (slug: string): Topic | undefined => {
   // Normalize the slug by replacing underscores with hyphens
   const normalizedSlug = slug.replace(/_/g, '-');
