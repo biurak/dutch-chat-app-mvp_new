@@ -6,7 +6,7 @@ export interface MessageCorrection {
 export interface Message {
   id: string
   role: "user" | "ai"
-  dutch: string
+  dutch: string // The original Dutch text
   english?: string // For pre-defined or fetched translations
   showTranslation?: boolean
   correction?: MessageCorrection
