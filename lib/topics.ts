@@ -30,16 +30,16 @@ export const topics: Topic[] = [
   {
     slug: "visiting-doctor",
     title: "Visiting the Doctor",
-    description: "Learn how to talk about health issues with a doctor.",
+    description: "Practice describing symptoms and talking with a doctor.",
     initialAiMessage: {
-      dutch: "Goedemorgen. Hoe kan ik u helpen?",
-      english: "Good morning. How can I help you?",
+      dutch: "Hallo! Wat scheelt er vandaag?",
+      english: "Hello! What seems to be the problem today?"
     },
     initialSuggestions: [
-      { dutch: "Ik heb een afspraak.", english: "I have an appointment." },
-      { dutch: "Ik voel me niet lekker.", english: "I don't feel well." },
       { dutch: "Ik heb hoofdpijn.", english: "I have a headache." },
-    ],
+      { dutch: "Ik voel me niet goed.", english: "I don't feel well." },
+      { dutch: "Ik heb een afspraak.", english: "I have an appointment." }
+    ]
   },
   {
     slug: "buying-groceries",
