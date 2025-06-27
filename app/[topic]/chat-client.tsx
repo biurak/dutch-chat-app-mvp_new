@@ -123,25 +123,18 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
     const userMessageId = uuidv4();
     const aiMessageId = uuidv4();
 
-    // Check grammar and get translation for the user's message
-    const grammarCheck = await checkGrammar(message);
-    const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0;
-    const correctedText = hasCorrections ? grammarCheck?.corrected : undefined;
-    const corrections = grammarCheck?.corrections || [];
-    const translation = grammarCheck?.translation || '';
-
-    // Add user message to chat with corrections and translation if available
+    // STEP 1: Immediately add user message and AI typing indicator to UI
     setMessages(prev => [
       ...prev,
       {
         id: userMessageId,
         role: 'user',
         dutch: message,
-        english: translation,
+        english: '', // Will be filled later
         showTranslation: false,
-        corrections,
-        correctedText,
-        showCorrections: hasCorrections // Show corrections by default if they exist
+        corrections: undefined, // Will be filled later
+        correctedText: undefined, // Will be filled later
+        showCorrections: false
       },
       {
         id: aiMessageId,
@@ -155,6 +148,34 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
     setIsLoadingAi(true);
 
+    // STEP 2: Start grammar checking in background (non-blocking)
+    checkGrammar(message).then(grammarCheck => {
+      if (grammarCheck) {
+        const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0;
+        const correctedText = hasCorrections ? grammarCheck?.corrected : undefined;
+        const corrections = grammarCheck?.corrections || [];
+        const translation = grammarCheck?.translation || '';
+
+        // Update user message with grammar corrections and translation
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === userMessageId
+              ? {
+                  ...msg,
+                  english: translation,
+                  corrections,
+                  correctedText,
+                  showCorrections: hasCorrections // Show corrections by default if they exist
+                }
+              : msg
+          )
+        );
+      }
+    }).catch(error => {
+      console.error('Error checking grammar:', error);
+    });
+
+    // STEP 3: Get AI response (parallel to grammar checking)
     try {
       // Prepare the chat history for the API
       const chatHistory = [
@@ -193,7 +214,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
       const data = await response.json();
       console.log('API response data:', JSON.stringify(data, null, 2));
       
-      // Update the AI message with the response
+      // STEP 4: Update the AI message with the response
       setMessages(prev =>
         prev.map(msg => {
           if (msg.id === aiMessageId) {
@@ -210,7 +231,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
         })
       );
       
-      // Process and update suggestions from the AI response
+      // STEP 5: Process and update suggestions from the AI response
       const processSuggestions = (suggestions: any) => {
         if (!suggestions || !Array.isArray(suggestions)) {
           console.warn('No valid suggestions array in response');
@@ -274,7 +295,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
     } finally {
       setIsLoadingAi(false);
     }
-  }, [currentTopic, messages, topicSlug]);
+  }, [currentTopic, messages, topicSlug, checkGrammar]);
 
   // Handle clicking on a suggestion - send directly without showing in input
   const handleSuggestionClick = useCallback((suggestion: Suggestion) => {
@@ -462,7 +483,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
                 )}
 
                 {/* Action buttons - only show if there are corrections or translations */}
-                {((message.corrections && message.corrections.length > 0) || message.english) && (
+                {
                 <div className="flex justify-between items-center mt-1 pt-1 border-t border-opacity-20 border-slate-300 text-xs text-slate-300">
                   {/* Toggle corrections button (for user messages with corrections) */}
                   {message.role === 'user' && message.corrections && message.corrections.length > 0 && (
@@ -478,19 +499,20 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
                   )}
                   
                   {/* Toggle translation button */}
-                  {message.english && (
+                
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleTranslation(message.id);
                       }}
-                      className="text-xs hover:underline focus:outline-none ml-auto"
+                      className="text-xs hover:underline focus:outline-none ml-auto disabled:text-slate-400 disabled:no-underline"
+                      disabled={!message.english}
                     >
                       {message.showTranslation ? 'Hide translation' : 'Show translation'}
                     </button>
-                  )}
+              
                 </div>
-                )}
+                }
               </div>
             </div>
           ))
