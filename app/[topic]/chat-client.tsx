@@ -110,7 +110,15 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
   // Handle sending a user message and processing the response
   const handleUserMessage = useCallback(async (message: string) => {
-    if (!message.trim() || !currentTopic) return;
+    console.log('handleUserMessage called with message:', message);
+    if (!message.trim()) {
+      console.error('Empty message received');
+      return;
+    }
+    if (!currentTopic) {
+      console.error('No current topic set');
+      return;
+    }
 
     const userMessageId = uuidv4();
     const aiMessageId = uuidv4();
@@ -183,31 +191,61 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
       }
 
       const data = await response.json();
+      console.log('API response data:', JSON.stringify(data, null, 2));
       
       // Update the AI message with the response
       setMessages(prev =>
-        prev.map(msg =>
-          msg.id === aiMessageId
-            ? {
-                ...msg,
-                dutch: data.ai_reply || data.dutch || 'Sorry, I could not generate a response.',
-                english: data.translation || data.english || '',
-                isStreaming: false
-              }
-            : msg
-        )
+        prev.map(msg => {
+          if (msg.id === aiMessageId) {
+            const aiMessage = {
+              ...msg,
+              dutch: data.ai_reply || data.dutch || 'Sorry, I could not generate a response.',
+              english: data.translation || data.english || '',
+              isStreaming: false
+            };
+            console.log('Updating AI message:', aiMessage);
+            return aiMessage;
+          }
+          return msg;
+        })
       );
       
-      // Update suggestions from the AI response
-      if (data.suggestions && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
-        setCurrentSuggestions(data.suggestions);
+      // Process and update suggestions from the AI response
+      const processSuggestions = (suggestions: any) => {
+        if (!suggestions || !Array.isArray(suggestions)) {
+          console.warn('No valid suggestions array in response');
+          return [];
+        }
+        
+        // Ensure each suggestion has the correct format
+        return suggestions.map((s: any, i: number) => {
+          // Handle both string and object formats
+          if (typeof s === 'string') {
+            return { dutch: s, english: '' };
+          } else if (s && typeof s === 'object') {
+            return {
+              dutch: s.dutch || s.text || `Suggestion ${i + 1}`,
+              english: s.english || ''
+            };
+          }
+          return { dutch: `Invalid suggestion ${i + 1}`, english: '' };
+        }).filter(Boolean);
+      };
+      
+      const newSuggestions = processSuggestions(data.suggestions);
+      
+      if (newSuggestions.length > 0) {
+        console.log('Setting new suggestions:', newSuggestions);
+        setCurrentSuggestions(newSuggestions);
       } else {
-        // If no suggestions in response, use default suggestions
-        setCurrentSuggestions([
+        // Fallback to default suggestions if none provided
+        const defaults = [
           { dutch: "Wat bedoel je?", english: "What do you mean?" },
           { dutch: "Kun je dat herhalen?", english: "Can you repeat that?" },
           { dutch: "Kun je dat uitleggen?", english: "Can you explain that?" }
-        ]);
+        ];
+        console.log('Using default suggestions');
+        setCurrentSuggestions(defaults);
       }
 
     } catch (error) {
@@ -240,8 +278,16 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
   // Handle clicking on a suggestion - send directly without showing in input
   const handleSuggestionClick = useCallback((suggestion: Suggestion) => {
+    console.log('Suggestion clicked:', suggestion);
+    if (!suggestion || !suggestion.dutch) {
+      console.error('Invalid suggestion object:', suggestion);
+      return;
+    }
+    console.log('Sending suggestion as message:', suggestion.dutch);
     // Send the suggestion directly without updating the input field
-    handleUserMessage(suggestion.dutch);
+    handleUserMessage(suggestion.dutch).catch(error => {
+      console.error('Error handling suggestion click:', error);
+    });
   }, [handleUserMessage]);
 
   // Handle form submission
@@ -456,17 +502,34 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
       {currentSuggestions.length > 0 && (
         <div className="bg-white border-t border-slate-200 p-3 overflow-x-auto shadow-sm">
           <div className="flex flex-wrap gap-2">
-            {currentSuggestions.map((suggestion, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="whitespace-nowrap text-sm"
-              >
-                {suggestion.dutch}
-              </Button>
-            ))}
+            {currentSuggestions.map((suggestion, index) => {
+              if (!suggestion || !suggestion.dutch) {
+                console.error('Invalid suggestion at index', index, ':', suggestion);
+                return null;
+              }
+              
+              return (
+                <Button
+                  key={`${suggestion.dutch}-${index}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Button click event:', e);
+                    handleSuggestionClick(suggestion);
+                  }}
+                  onMouseDown={(e) => {
+                    // Prevent input blur when clicking suggestions
+                    e.preventDefault();
+                  }}
+                  className="whitespace-nowrap text-sm cursor-pointer active:scale-95 transition-transform"
+                  title={suggestion.english || ''}
+                >
+                  {suggestion.dutch}
+                </Button>
+              );
+            })}
           </div>
         </div>
       )}

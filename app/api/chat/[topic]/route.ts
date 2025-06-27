@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { loadPromptConfig } from '@/lib/prompt-loader';
 import { generateAIResponse } from '@/lib/openai-service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 type Message = {
   role: 'user' | 'assistant' | 'system';
@@ -98,13 +100,32 @@ export async function POST(
     
     let promptConfig;
     try {
+      const promptDir = path.join(process.cwd(), 'prompt');
+      console.log('Looking for prompt files in:', promptDir);
+      console.log('Available prompt files:', fs.readdirSync(promptDir));
+      
       promptConfig = await loadPromptConfig(normalizedTopic);
-      console.log('Successfully loaded prompt config');
+      console.log('Successfully loaded prompt config:', {
+        name: promptConfig.name,
+        description: promptConfig.description,
+        input_variables: promptConfig.input_variables,
+        template_length: promptConfig.template?.length || 0
+      });
     } catch (error) {
-      console.error('Error loading prompt config:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error loading prompt config:', {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        topic,
+        normalizedTopic,
+        promptDir: path.join(process.cwd(), 'prompt'),
+        files: fs.readdirSync(path.join(process.cwd(), 'prompt'))
+      });
+      
       return NextResponse.json(
         { 
           error: 'Failed to load prompt configuration',
+          details: errorMessage,
           ai_reply: 'Sorry, I encountered an error loading the conversation topic.',
           translation: 'Het spijt me, er is een fout opgetreden bij het laden van het gespreksonderwerp.',
           correction: { correctedDutch: '', explanation: '' },
@@ -120,20 +141,6 @@ export async function POST(
     
     // Prepare conversation history
     const conversationHistory: Message[] = [
-      // Start with system message if needed
-      {
-        role: 'system',
-        content: `You are a friendly Dutch language assistant helping someone learn Dutch. 
-        Always respond in the following JSON format:
-        {
-          "ai_reply": "Your response in Dutch",
-          "translation": "English translation of your response",
-          "correction": {
-            "correctedDutch": "Corrected Dutch sentence if user made a mistake (empty string if no correction needed)",
-            "explanation": "Brief explanation of the correction in English (empty string if no correction needed)"
-          }
-        }`
-      },
       // Add existing messages
       ...messages,
       // Add user input if provided
