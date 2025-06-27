@@ -49,6 +49,12 @@ The chat API endpoint has been significantly improved with better error handling
 - Environment information logging
 - Temporary validation bypass for debugging
 
+### 8. **Environment Configuration**
+- OpenAI model name configurable via `OPENAI_MODEL` environment variable
+- Fallback to `gpt-4o-2024-08-06` if environment variable not set
+- Centralized model configuration across all API endpoints
+- Easy model switching without code changes
+
 ## Recent Fixes & Compatibility
 
 ### Next.js 15+ Compatibility
@@ -76,6 +82,7 @@ export async function POST(
 - Increased max message length from 1000 to 5000 characters
 - Added `.passthrough()` to Zod schema for flexible validation
 - Enhanced error messages with specific field validation details
+- **NEW**: OpenAI model name now configurable via `OPENAI_MODEL` environment variable
 
 ## File Structure
 
@@ -170,3 +177,4 @@ POST /api/chat/ordering-cafe
 7. **Future-Proof**: Compatible with Next.js 15+ and newer framework versions
 8. **Flexibility**: Configurable limits and validation rules
 9. **Developer Experience**: Detailed debugging output and clear error messages
+10. **Configuration Management**: Environment-based model configuration for easy deployment management
