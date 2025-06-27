@@ -4,8 +4,10 @@ import { useEffect, useRef, useState, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Mic, Send } from 'lucide-react';
+import { ArrowLeft, Mic, Send, Volume2, VolumeX } from 'lucide-react';
 import { getTopicBySlug, type Topic } from '@/lib/topics';
+import { useVoiceRecording } from '@/hooks/use-voice-recording';
+import { useTextToSpeech } from '@/hooks/use-text-to-speech';
 
 interface Suggestion {
   dutch: string;
@@ -63,6 +65,23 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
   const [currentTopic, setCurrentTopic] = useState<ExtendedTopic | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
+  
+  // Voice-related state
+  const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
+  const [speechSettings, setSpeechSettings] = useState({
+    rate: 1,
+    pitch: 1,
+    volume: 1,
+    autoPlay: false
+  });
+
+  // Voice hooks
+  const voiceRecording = useVoiceRecording({ language: 'nl-NL' });
+  const textToSpeech = useTextToSpeech({
+    rate: speechSettings.rate,
+    pitch: speechSettings.pitch,
+    volume: speechSettings.volume
+  });
 
   // Toggle translation for a message
   const toggleTranslation = useCallback((messageId: string) => {
@@ -85,6 +104,46 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
       )
     );
   }, []);
+
+  // Voice input handlers
+  const handleVoiceInput = useCallback(() => {
+    if (!voiceRecording.isSupported) {
+      alert('Voice input not supported in this browser');
+      return;
+    }
+
+    if (voiceRecording.isRecording) {
+      voiceRecording.stopRecording();
+    } else {
+      voiceRecording.startRecording();
+    }
+  }, [voiceRecording]);
+
+  // Voice output handlers
+  const handlePlayAudio = useCallback((messageId: string, text: string, language: 'nl-NL' | 'en-US' = 'nl-NL') => {
+    if (audioPlaying === messageId) {
+      textToSpeech.stop();
+      setAudioPlaying(null);
+    } else {
+      setAudioPlaying(messageId);
+      textToSpeech.speak(text, language);
+    }
+  }, [audioPlaying, textToSpeech]);
+
+  // Handle voice transcript
+  useEffect(() => {
+    if (voiceRecording.transcript && !voiceRecording.isRecording) {
+      setInputValue(voiceRecording.transcript);
+      voiceRecording.clearTranscript();
+    }
+  }, [voiceRecording.transcript, voiceRecording.isRecording, voiceRecording]);
+
+  // Handle TTS events
+  useEffect(() => {
+    if (!textToSpeech.isPlaying && audioPlaying) {
+      setAudioPlaying(null);
+    }
+  }, [textToSpeech.isPlaying, audioPlaying]);
 
   // Check grammar and get corrections for user message
   const checkGrammar = useCallback(async (text: string) => {
@@ -499,17 +558,57 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
                   )}
                   
                   {/* Toggle translation button */}
-                
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTranslation(message.id);
+                    }}
+                    className="text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline"
+                    disabled={!message.english}
+                  >
+                    {message.showTranslation ? 'Hide translation' : 'Show translation'}
+                  </button>
+                  
+                  {/* Speaker buttons */}
+                  <div className="flex gap-2 ml-auto">
+                    {/* Speaker button for Dutch text */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleTranslation(message.id);
+                        handlePlayAudio(message.id, message.dutch, 'nl-NL');
                       }}
-                      className="text-xs hover:underline focus:outline-none ml-auto disabled:text-slate-400 disabled:no-underline"
-                      disabled={!message.english}
+                      disabled={!textToSpeech.isSupported || !message.dutch}
+                      className="text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline flex items-center gap-1"
+                      title="Play Dutch audio"
                     >
-                      {message.showTranslation ? 'Hide translation' : 'Show translation'}
+                      {audioPlaying === message.id ? (
+                        <VolumeX className="w-3 h-3" />
+                      ) : (
+                        <Volume2 className="w-3 h-3" />
+                      )}
+                      {audioPlaying === message.id ? 'Stop' : 'Play Dutch'}
                     </button>
+
+                    {/* Speaker button for English translation */}
+                    {message.english && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlayAudio(`${message.id}-en`, message.english, 'en-US');
+                        }}
+                        disabled={!textToSpeech.isSupported}
+                        className="text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline flex items-center gap-1"
+                        title="Play English audio"
+                      >
+                        {audioPlaying === `${message.id}-en` ? (
+                          <VolumeX className="w-3 h-3" />
+                        ) : (
+                          <Volume2 className="w-3 h-3" />
+                        )}
+                        {audioPlaying === `${message.id}-en` ? 'Stop' : 'Play English'}
+                      </button>
+                    )}
+                  </div>
               
                 </div>
                 }
@@ -558,6 +657,20 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
       {/* Input */}
       <div className="bg-white border-t border-slate-200 p-4 sticky bottom-0">
+        {/* Recording indicator */}
+        {voiceRecording.isRecording && (
+          <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs z-10">
+            🎤 Recording...
+          </div>
+        )}
+        
+        {/* Voice recording error */}
+        {voiceRecording.error && (
+          <div className="mb-2 p-2 bg-red-100 border border-red-300 text-red-700 rounded text-sm">
+            {voiceRecording.error}
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
@@ -578,15 +691,13 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
           </Button>
           <Button 
             type="button" 
-            variant="outline"
+            variant={voiceRecording.isRecording ? "default" : "outline"}
             size="icon"
-            onClick={() => {
-              // TODO: Implement voice input
-              alert('Voice input will be implemented here');
-            }}
-            disabled={isLoadingAi}
+            onClick={handleVoiceInput}
+            disabled={isLoadingAi || !voiceRecording.isSupported}
+            className={`${voiceRecording.isRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse' : ''}`}
           >
-            <Mic className="w-4 h-4" />
+            <Mic className={`w-4 h-4 ${voiceRecording.isRecording ? 'text-white' : ''}`} />
           </Button>
         </form>
       </div>
