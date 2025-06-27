@@ -483,7 +483,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
                 )}
 
                 {/* Action buttons - only show if there are corrections or translations */}
-                {((message.corrections && message.corrections.length > 0) || message.english) && (
+                {
                 <div className="flex justify-between items-center mt-1 pt-1 border-t border-opacity-20 border-slate-300 text-xs text-slate-300">
                   {/* Toggle corrections button (for user messages with corrections) */}
                   {message.role === 'user' && message.corrections && message.corrections.length > 0 && (
@@ -499,19 +499,20 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
                   )}
                   
                   {/* Toggle translation button */}
-                  {message.english && (
+                
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleTranslation(message.id);
                       }}
-                      className="text-xs hover:underline focus:outline-none ml-auto"
+                      className="text-xs hover:underline focus:outline-none ml-auto disabled:text-slate-400 disabled:no-underline"
+                      disabled={!message.english}
                     >
                       {message.showTranslation ? 'Hide translation' : 'Show translation'}
                     </button>
-                  )}
+              
                 </div>
-                )}
+                }
               </div>
             </div>
           ))
