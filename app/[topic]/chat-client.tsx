@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, BookOpen, Mic, Send, Volume2, VolumeX } from 'lucide-react'
 import { getTopicBySlug, type Topic } from '@/lib/topics'
-import { useVoiceRecording } from '@/hooks/use-voice-recording'
+import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
 import { ReviewWordsModal } from '@/components/chat/review-words-modal'
 import { Toaster } from '@/components/ui/toaster'
@@ -169,20 +169,21 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 		}
 	}, [])
 
-  // Handle sending a user message and processing the response
-  const handleUserMessage = useCallback(async (message: string) => {
-    console.log('handleUserMessage called with message:', message);
-    if (!message.trim()) {
-      console.error('Empty message received');
-      return;
-    }
-    if (!currentTopic) {
-      console.error('No current topic set');
-      return;
-    }
+	// Handle sending a user message and processing the response
+	const handleUserMessage = useCallback(
+		async (message: string) => {
+			console.log('handleUserMessage called with message:', message)
+			if (!message.trim()) {
+				console.error('Empty message received')
+				return
+			}
+			if (!currentTopic) {
+				console.error('No current topic set')
+				return
+			}
 
-    const userMessageId = uuidv4();
-    const aiMessageId = uuidv4();
+			const userMessageId = uuidv4()
+			const aiMessageId = uuidv4()
 
 			// STEP 1: Immediately add user message and AI typing indicator to UI
 			setMessages((prev) => [
@@ -218,24 +219,25 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						const corrections = grammarCheck?.corrections || []
 						const translation = grammarCheck?.translation || ''
 
-        // Update user message with grammar corrections and translation
-        setMessages(prev =>
-          prev.map(msg =>
-            msg.id === userMessageId
-              ? {
-                  ...msg,
-                  english: translation,
-                  corrections,
-                  correctedText,
-                  showCorrections: hasCorrections // Show corrections by default if they exist
-                }
-              : msg
-          )
-        );
-      }
-    }).catch(error => {
-      console.error('Error checking grammar:', error);
-    });
+						// Update user message with grammar corrections and translation
+						setMessages((prev) =>
+							prev.map((msg) =>
+								msg.id === userMessageId
+									? {
+											...msg,
+											english: translation,
+											corrections,
+											correctedText,
+											showCorrections: hasCorrections, // Show corrections by default if they exist
+									  }
+									: msg
+							)
+						)
+					}
+				})
+				.catch((error) => {
+					console.error('Error checking grammar:', error)
+				})
 
 			// STEP 3: Get AI response (parallel to grammar checking)
 			try {
@@ -737,3 +739,4 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 		</>
 	)
 }
+
