@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, BookOpen, Mic, Send, Volume2, VolumeX } from 'lucide-react'
 import { getTopicBySlug, type Topic, type NewWord } from '@/lib/topics'
+import { processConversationForNewWords } from '@/lib/text-utils'
 import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
 import { ReviewWordsModal } from '@/components/chat/review-words-modal'
@@ -70,6 +71,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	const [inputValue, setInputValue] = useState('')
 	const [isReviewModalOpen, setReviewModalOpen] = useState(false)
 	const [newWords, setNewWords] = useState<NewWord[]>([])
+	const [conversationWords, setConversationWords] = useState<NewWord[]>([])
 
 	// Voice-related state
 	const [audioPlaying, setAudioPlaying] = useState<string | null>(null)
@@ -286,12 +288,34 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 				// Extract and store any new words from the response
 				if (data.new_words?.length) {
-					setNewWords(prev => {
-						const existingWords = new Set(prev.map(word => word.dutch))
+					setNewWords((prev) => {
+						const existingWords = new Set(prev.map((word) => word.dutch))
 						const uniqueNewWords = data.new_words.filter((word: NewWord) => !existingWords.has(word.dutch))
 						return [...prev, ...uniqueNewWords]
 					})
 				}
+
+				// Update conversation words from the entire conversation
+				const allMessages = [
+					...messages,
+					{
+						id: userMessageId,
+						role: 'user',
+						dutch: message,
+						english: data.translation || '',
+						showTranslation: false,
+					},
+					{
+						id: aiMessageId,
+						role: 'ai',
+						dutch: data.ai_reply,
+						english: data.translation || '',
+						showTranslation: false,
+					},
+				]
+
+				const extractedWords = processConversationForNewWords(allMessages)
+				setConversationWords(extractedWords)
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
@@ -745,13 +769,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			<ReviewWordsModal
 				isOpen={isReviewModalOpen}
 				onClose={() => setReviewModalOpen(false)}
-				words={[
-          ...(currentTopic?.potentialNewWords || []),
-          ...newWords
-        ]}
+				words={[...new Set([...newWords, ...conversationWords])]}
 			/>
 			<Toaster />
 		</>
 	)
 }
-
