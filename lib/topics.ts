@@ -1,15 +1,23 @@
+export interface NewWord {
+  dutch: string
+  english: string
+  dutch_sentence: string
+  english_sentence: string
+}
+
 export interface Topic {
   slug: string
   title: string
   description: string
   initialAiMessage: {
     dutch: string
-    english: string // For simulation
+    english: string
   }
   initialSuggestions: Array<{
     dutch: string
-    english: string // For simulation
+    english: string
   }>
+  potentialNewWords: NewWord[]
 }
 
 export const topics: Topic[] = [
@@ -26,20 +34,72 @@ export const topics: Topic[] = [
       { dutch: "Heeft u appeltaart?", english: "Do you have apple pie?" },
       { dutch: "Mag ik de kaart, alstublieft?", english: "Can I have the menu, please?" },
     ],
+    potentialNewWords: [
+      {
+        dutch: "de rekening",
+        english: "the bill",
+        dutch_sentence: "Mag ik de rekening, alstublieft?",
+        english_sentence: "May I have the bill, please?",
+      },
+      {
+        dutch: "de appeltaart",
+        english: "the apple pie",
+        dutch_sentence: "De appeltaart is hier heerlijk.",
+        english_sentence: "The apple pie here is delicious.",
+      },
+      {
+        dutch: "graag",
+        english: "please / gladly",
+        dutch_sentence: "Ik wil graag een koffie.",
+        english_sentence: "I would gladly like a coffee.",
+      },
+      {
+        dutch: "met slagroom",
+        english: "with whipped cream",
+        dutch_sentence: "Wilt u slagroom bij de taart?",
+        english_sentence: "Would you like whipped cream with the pie?",
+      },
+    ],
   },
   {
     slug: "visiting-doctor",
     title: "Visiting the Doctor",
-    description: "Practice describing symptoms and talking with a doctor.",
+    description: "Learn how to talk about health issues with a doctor.",
     initialAiMessage: {
-      dutch: "Hallo! Wat scheelt er vandaag?",
-      english: "Hello! What seems to be the problem today?"
+      dutch: "Goedemorgen. Hoe kan ik u helpen?",
+      english: "Good morning. How can I help you?",
     },
     initialSuggestions: [
+      { dutch: "Ik heb een afspraak.", english: "I have an appointment." },
+      { dutch: "Ik voel me niet lekker.", english: "I don't feel well." },
       { dutch: "Ik heb hoofdpijn.", english: "I have a headache." },
-      { dutch: "Ik voel me niet goed.", english: "I don't feel well." },
-      { dutch: "Ik heb een afspraak.", english: "I have an appointment." }
-    ]
+    ],
+    potentialNewWords: [
+      {
+        dutch: "de afspraak",
+        english: "the appointment",
+        dutch_sentence: "Ik heb om 10 uur een afspraak.",
+        english_sentence: "I have an appointment at 10 o'clock.",
+      },
+      {
+        dutch: "de hoofdpijn",
+        english: "the headache",
+        dutch_sentence: "Ik heb al de hele dag hoofdpijn.",
+        english_sentence: "I've had a headache all day.",
+      },
+      {
+        dutch: "het recept",
+        english: "the prescription",
+        dutch_sentence: "De dokter geeft mij een recept.",
+        english_sentence: "The doctor gives me a prescription.",
+      },
+      {
+        dutch: "de verzekering",
+        english: "the insurance",
+        dutch_sentence: "Heeft u een zorgverzekering?",
+        english_sentence: "Do you have health insurance?",
+      },
+    ],
   },
   {
     slug: "buying-groceries",
@@ -54,8 +114,15 @@ export const topics: Topic[] = [
       { dutch: "Heeft u ook biologische eieren?", english: "Do you also have organic eggs?" },
       { dutch: "Hoeveel kost dit?", english: "How much does this cost?" },
     ],
+    potentialNewWords: [
+      {
+        dutch: "de aanbieding",
+        english: "the offer/special",
+        dutch_sentence: "Deze week is de kaas in de aanbieding.",
+        english_sentence: "The cheese is on offer this week.",
+      },
+    ],
   },
-  // New Topics
   {
     slug: "talking-landlord",
     title: "Talking to Your Landlord",
@@ -68,6 +135,14 @@ export const topics: Topic[] = [
       { dutch: "De verwarming doet het niet.", english: "The heating is not working." },
       { dutch: "Ik heb een vraag over mijn huurcontract.", english: "I have a question about my rental contract." },
       { dutch: "Er is een lekkage in de badkamer.", english: "There is a leak in the bathroom." },
+    ],
+    potentialNewWords: [
+      {
+        dutch: "de huur",
+        english: "the rent",
+        dutch_sentence: "Wanneer moet ik de huur betalen?",
+        english_sentence: "When do I have to pay the rent?",
+      },
     ],
   },
   {
@@ -83,6 +158,14 @@ export const topics: Topic[] = [
       { dutch: "Welke bus gaat naar het Rijksmuseum?", english: "Which bus goes to the Rijksmuseum?" },
       { dutch: "Waar kan ik een OV-chipkaart kopen?", english: "Where can I buy an OV-chipkaart?" },
     ],
+    potentialNewWords: [
+      {
+        dutch: "de OV-chipkaart",
+        english: "the public transport card",
+        dutch_sentence: "Je moet inchecken met je OV-chipkaart.",
+        english_sentence: "You have to check in with your public transport card.",
+      },
+    ],
   },
   {
     slug: "introducing-yourself-smalltalk",
@@ -96,6 +179,14 @@ export const topics: Topic[] = [
       { dutch: "Mijn naam is...", english: "My name is..." },
       { dutch: "Waar kom je vandaan?", english: "Where are you from?" },
       { dutch: "Wat voor weer is het vandaag?", english: "What's the weather like today?" },
+    ],
+    potentialNewWords: [
+      {
+        dutch: "aangenaam",
+        english: "pleasant/nice to meet you",
+        dutch_sentence: "Aangenaam kennis te maken.",
+        english_sentence: "Pleasant to make your acquaintance.",
+      },
     ],
   },
   {
@@ -111,6 +202,14 @@ export const topics: Topic[] = [
       { dutch: "Hoe was je dag op het werk?", english: "How was your day at work?" },
       { dutch: "Ik heb een vergadering om 10 uur.", english: "I have a meeting at 10 o'clock." },
     ],
+    potentialNewWords: [
+      {
+        dutch: "de vergadering",
+        english: "the meeting",
+        dutch_sentence: "De vergadering begint om 9 uur.",
+        english_sentence: "The meeting starts at 9 o'clock.",
+      },
+    ],
   },
   {
     slug: "hobbies-pets",
@@ -124,6 +223,14 @@ export const topics: Topic[] = [
       { dutch: "Ik hou van lezen.", english: "I like reading." },
       { dutch: "Ik heb een kat.", english: "I have a cat." },
       { dutch: "Wat doe je graag in je vrije tijd?", english: "What do you like to do in your free time?" },
+    ],
+    potentialNewWords: [
+      {
+        dutch: "het huisdier",
+        english: "the pet",
+        dutch_sentence: "Heb jij een huisdier?",
+        english_sentence: "Do you have a pet?",
+      },
     ],
   },
   {
@@ -139,11 +246,17 @@ export const topics: Topic[] = [
       { dutch: "Kan ik een tafel reserveren voor twee personen?", english: "Can I reserve a table for two people?" },
       { dutch: "Hoe laat heeft u tijd?", english: "What time are you available?" },
     ],
+    potentialNewWords: [
+      {
+        dutch: "reserveren",
+        english: "to reserve",
+        dutch_sentence: "Ik wil graag een tafel reserveren.",
+        english_sentence: "I would like to reserve a table.",
+      },
+    ],
   },
 ]
 
 export const getTopicBySlug = (slug: string): Topic | undefined => {
-  // Normalize the slug by replacing underscores with hyphens
-  const normalizedSlug = slug.replace(/_/g, '-');
-  return topics.find((topic) => topic.slug === normalizedSlug);
+  return topics.find((topic) => topic.slug === slug)
 }
