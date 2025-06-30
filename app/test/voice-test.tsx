@@ -1,17 +1,48 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, Volume2, VolumeX } from 'lucide-react';
-import { useVoiceRecording } from '@/hooks/use-voice-recording';
+import { useSpeechRecognitionFallback } from '@/hooks/use-speech-recognition-fallback';
 import { useTextToSpeech } from '@/hooks/use-text-to-speech';
 
 export default function VoiceTestPage() {
   const [testText, setTestText] = useState('Hallo, dit is een test voor spraakherkenning en tekst-naar-spraak.');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recognitionError, setRecognitionError] = useState<string | null>(null);
   
-  const voiceRecording = useVoiceRecording({ language: 'nl-NL' });
+  const { startListening, stopListening, error, isSupported } = useSpeechRecognitionFallback();
   const textToSpeech = useTextToSpeech();
+
+  const handleResult = useCallback((transcript: string, isFinal: boolean) => {
+    if (isFinal) {
+      setTestText(transcript);
+      setRecognitionError(null);
+    }
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    console.error('Speech recognition error:', error);
+    setRecognitionError(error);
+  }, []);
+
+  const toggleRecording = useCallback(() => {
+    if (isListening) {
+      stopListening();
+      setIsListening(false);
+    } else {
+      setRecognitionError(null);
+      startListening({
+        lang: 'nl-NL',
+        continuous: true,
+        interimResults: true,
+        onResult: handleResult,
+        onError: handleError
+      });
+      setIsListening(true);
+    }
+  }, [isListening, startListening, stopListening, handleResult, handleError]);
 
   const handlePlayAudio = (text: string, language: 'nl-NL' | 'en-US' = 'nl-NL') => {
     if (isPlaying) {
@@ -30,14 +61,6 @@ export default function VoiceTestPage() {
     }
   }, [textToSpeech.isPlaying, isPlaying]);
 
-  // Handle voice transcript
-  useEffect(() => {
-    if (voiceRecording.transcript && !voiceRecording.isRecording) {
-      setTestText(voiceRecording.transcript);
-      voiceRecording.clearTranscript();
-    }
-  }, [voiceRecording.transcript, voiceRecording.isRecording, voiceRecording]);
-
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-2xl mx-auto">
@@ -48,9 +71,23 @@ export default function VoiceTestPage() {
           <h2 className="text-xl font-semibold mb-4">Browser Support</h2>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${voiceRecording.isSupported ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              <span>Speech Recognition: {voiceRecording.isSupported ? 'Supported' : 'Not Supported'}</span>
+              <div className={`w-3 h-3 rounded-full ${isSupported ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span>Speech Recognition: {isSupported ? 'Supported' : 'Not Supported'}</span>
             </div>
+            {!isSupported && (
+              <p className="text-sm text-yellow-700 bg-yellow-50 p-2 rounded">
+                Your browser doesn't support speech recognition. Try using Chrome, Edge, or Safari.
+              </p>
+            )}
+            {(error || recognitionError) && (
+              <div className="mt-2 p-2 bg-red-50 text-red-700 text-sm rounded">
+                <p className="font-medium">Error:</p>
+                <p className="whitespace-pre-wrap">{error || recognitionError}</p>
+                <p className="mt-2 text-xs">
+                  Note: Speech recognition requires internet access. Please check your connection and try again.
+                </p>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className={`w-3 h-3 rounded-full ${textToSpeech.isSupported ? 'bg-green-500' : 'bg-red-500'}`}></span>
               <span>Text-to-Speech: {textToSpeech.isSupported ? 'Supported' : 'Not Supported'}</span>
@@ -64,48 +101,30 @@ export default function VoiceTestPage() {
         {/* Voice Recording Test */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-4">Voice Recording Test</h2>
-          
-          {voiceRecording.error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
-              {voiceRecording.error}
-            </div>
-          )}
-          
-          <div className="flex items-center gap-4 mb-4">
-            <Button 
-              variant={voiceRecording.isRecording ? "default" : "outline"}
-              onClick={() => {
-                if (voiceRecording.isRecording) {
-                  voiceRecording.stopRecording();
-                } else {
-                  voiceRecording.startRecording();
-                }
-              }}
-              disabled={!voiceRecording.isSupported}
-              className={`${voiceRecording.isRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse' : ''}`}
+          <div className="mt-6">
+            <Button
+              onClick={toggleRecording}
+              variant={isListening ? 'destructive' : 'default'}
+              className="flex items-center gap-2"
+              disabled={!isSupported}
             >
-              <Mic className={`w-4 h-4 mr-2 ${voiceRecording.isRecording ? 'text-white' : ''}`} />
-              {voiceRecording.isRecording ? 'Stop Recording' : 'Start Recording'}
+              <Mic className="h-4 w-4" />
+              {isListening ? 'Stop Recording' : 'Start Recording'}
             </Button>
-            
-            {voiceRecording.isRecording && (
-              <span className="text-red-600 animate-pulse">🎤 Recording...</span>
+            {isListening && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <span>Listening...</span>
+              </div>
             )}
           </div>
-          
           <div className="space-y-2">
             <div>
               <strong>Live Transcript:</strong>
               <div className="mt-1 p-2 bg-slate-100 rounded min-h-[40px]">
-                {voiceRecording.transcript || 'Start recording to see transcript here...'}
+                {testText || 'Start recording to see transcript here...'}
               </div>
             </div>
-            
-            {voiceRecording.confidence > 0 && (
-              <div>
-                <strong>Confidence:</strong> {Math.round(voiceRecording.confidence * 100)}%
-              </div>
-            )}
           </div>
         </div>
 

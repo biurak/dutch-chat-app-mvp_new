@@ -10,7 +10,7 @@ declare global {
 
 interface SpeechRecognition extends EventTarget {
   continuous: boolean;
-  grammars: any; // SpeechGrammarList - simplified for now
+  grammars: any;
   interimResults: boolean;
   lang: string;
   maxAlternatives: number;
@@ -107,42 +107,8 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
     isSecureContext &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-  // Initialize speech recognition with proper TypeScript types
-  useEffect(() => {
-    if (!isSupported) return;
-
-    // Add a small delay to ensure the component is fully mounted
-    const initTimeout = setTimeout(() => {
-      try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition: SpeechRecognition = new SpeechRecognition();
-        
-        // Set recognition properties
-        recognition.continuous = fullConfig.continuous;
-        recognition.interimResults = fullConfig.interimResults;
-        recognition.lang = fullConfig.language;
-        recognition.maxAlternatives = 1;
-
-        // Set up event handlers
-        setupRecognitionHandlers(recognition);
-        
-        recognitionRef.current = recognition;
-      } catch (err) {
-        console.error('Failed to initialize speech recognition:', err);
-        setError('Failed to initialize voice recognition. Please refresh the page.');
-      }
-    }, 100);
-
-    return () => {
-      clearTimeout(initTimeout);
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
-  }, [fullConfig.language, fullConfig.continuous, fullConfig.interimResults, isSupported]);
-
   // Set up recognition event handlers
-  const setupRecognitionHandlers = (recognition: SpeechRecognition) => {
+  const setupRecognitionHandlers = useCallback((recognition: SpeechRecognition) => {
     if (!recognition) return;
     
     recognition.onstart = () => {
@@ -179,29 +145,12 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
       setIsRecording(false);
     };
     
-    recognition.onaudiostart = () => {
-      console.log('Audio capture started');
-    };
-    
-    recognition.onaudioend = () => {
-      console.log('Audio capture ended');
-    };
-    
-    recognition.onsoundstart = () => {
-      console.log('Sound detected');
-    };
-    
-    recognition.onsoundend = () => {
-      console.log('Sound ended');
-    };
-    
-    recognition.onspeechstart = () => {
-      console.log('Speech detected');
-    };
-    
-    recognition.onspeechend = () => {
-      console.log('Speech ended');
-    };
+    recognition.onaudiostart = () => console.log('Audio capture started');
+    recognition.onaudioend = () => console.log('Audio capture ended');
+    recognition.onsoundstart = () => console.log('Sound detected');
+    recognition.onsoundend = () => console.log('Sound ended');
+    recognition.onspeechstart = () => console.log('Speech detected');
+    recognition.onspeechend = () => console.log('Speech ended');
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error, event);
@@ -220,10 +169,8 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
         'not-found': 'Speech recognition service not available.'
       };
       
-      // Provide more specific error messages when possible
       let errorMessage = errorMessages[event.error] || 'An error occurred during voice recording.';
       
-      // Additional guidance for common issues
       if (event.error === 'network' && !navigator.onLine) {
         errorMessage = 'You appear to be offline. Please check your internet connection.';
       } else if (event.error === 'not-allowed') {
@@ -233,26 +180,40 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
       }
       
       setError(errorMessage);
-      
-      // Log additional debug info
-      console.log('Speech recognition error details:', {
-        error: event.error,
-        message: event.message,
-        browser: navigator.userAgent,
-        secureContext: window.isSecureContext,
-        protocol: window.location.protocol,
-        hostname: window.location.hostname
-      });
     };
+  }, [fullConfig.interimResults]);
 
-    recognitionRef.current = recognition;
+  // Initialize speech recognition
+  useEffect(() => {
+    if (!isSupported) return;
+
+    const initTimeout = setTimeout(() => {
+      try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        // Set recognition properties
+        recognition.continuous = fullConfig.continuous;
+        recognition.interimResults = fullConfig.interimResults;
+        recognition.lang = fullConfig.language;
+        recognition.maxAlternatives = 1;
+
+        // Set up event handlers
+        setupRecognitionHandlers(recognition);
+        recognitionRef.current = recognition;
+      } catch (err) {
+        console.error('Failed to initialize speech recognition:', err);
+        setError('Failed to initialize voice recognition. Please refresh the page.');
+      }
+    }, 100);
 
     return () => {
+      clearTimeout(initTimeout);
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
     };
-  }, [fullConfig.language, fullConfig.continuous, fullConfig.interimResults, isSupported]);
+  }, [fullConfig.language, fullConfig.continuous, fullConfig.interimResults, isSupported, setupRecognitionHandlers]);
 
   const startRecording = useCallback(async () => {
     console.log('Starting voice recording...');
@@ -270,12 +231,17 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
         throw new Error('Voice recognition is not supported in this browser. Try using Chrome, Edge, or Safari.');
       }
 
-      // Check if recognition is initialized
+      // Initialize recognition if not already done
       if (!recognitionRef.current) {
         console.log('Initializing speech recognition...');
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognitionRef.current = new SpeechRecognition();
-        setupRecognitionHandlers(recognitionRef.current);
+        const recognition = new SpeechRecognition();
+        recognition.continuous = fullConfig.continuous;
+        recognition.interimResults = fullConfig.interimResults;
+        recognition.lang = fullConfig.language;
+        recognition.maxAlternatives = 1;
+        setupRecognitionHandlers(recognition);
+        recognitionRef.current = recognition;
       }
 
       // Request microphone permission explicitly
@@ -294,16 +260,10 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
       setTranscript('');
       setConfidence(0);
       
-      // Add error handling for the start method
-      try {
-        if (recognitionRef.current) {
-          recognitionRef.current.start();
-        } else {
-          throw new Error('Speech recognition not properly initialized');
-        }
-      } catch (startError) {
-        console.error('Error starting recognition:', startError);
-        throw new Error('Failed to start voice recognition. Please try again.');
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+      } else {
+        throw new Error('Speech recognition not properly initialized');
       }
       
     } catch (error) {
@@ -312,7 +272,6 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
       setError(err.message || 'Failed to start voice recording. Please try again.');
       setIsRecording(false);
       
-      // Log additional debug info
       console.log('Recording error details:', {
         error: err.message,
         browser: navigator?.userAgent,
@@ -323,7 +282,7 @@ export function useVoiceRecording(config?: Partial<VoiceRecordingConfig>): Voice
         isSecureContext
       });
     }
-  }, [isSupported, isSecureContext]);
+  }, [isSupported, isSecureContext, fullConfig.continuous, fullConfig.interimResults, fullConfig.language, setupRecognitionHandlers]);
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current && isRecording) {
