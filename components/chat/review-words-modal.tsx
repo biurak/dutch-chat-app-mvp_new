@@ -152,47 +152,80 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
                 <p className="text-sm text-muted-foreground mb-4">
                   Review your selected words before exporting.
                 </p>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[150px]">Dutch Word</TableHead>
-                        <TableHead>Dutch Sentence</TableHead>
-                        <TableHead>English Translation</TableHead>
-                        <TableHead>Sentence Translation</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredWords.length === 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="hidden sm:table-header-group">
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                            No words to display
-                          </TableCell>
+                          <TableHead className="min-w-[120px]">Dutch Word</TableHead>
+                          <TableHead className="min-w-[200px]">Dutch Sentence</TableHead>
+                          <TableHead className="min-w-[150px]">English</TableHead>
+                          <TableHead className="min-w-[200px]">Sentence Translation</TableHead>
                         </TableRow>
-                      ) : (
-                        filteredWords.map((word) => (
-                          <TableRow key={word.dutch}>
-                            <TableCell className="font-medium">{word.dutch}</TableCell>
-                            <TableCell className="max-w-[300px]">
-                              <div className="flex items-center gap-2">
-                                <span>{word.dutch_sentence}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-slate-400 hover:text-slate-900"
-                                  onClick={() => handlePlayAudio(word.dutch_sentence)}
-                                >
-                                  <Volume2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredWords.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                              No words to display
                             </TableCell>
-                            <TableCell>{word.english}</TableCell>
-                            <TableCell>{word.english_sentence}</TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          filteredWords.map((word) => (
+                            <TableRow key={word.dutch} className="group">
+                              {/* Mobile view - stacked layout */}
+                              <TableCell className="sm:hidden p-0">
+                                <div className="border-b p-4 space-y-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="font-medium">{word.dutch}</div>
+                                    <div className="text-sm text-muted-foreground">{word.english}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-sm">{word.dutch_sentence}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-slate-400 hover:text-slate-900 flex-shrink-0"
+                                        onClick={() => handlePlayAudio(word.dutch_sentence)}
+                                      >
+                                        <Volume2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {word.english_sentence}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              
+                              {/* Desktop view - table layout */}
+                              <TableCell className="hidden sm:table-cell font-medium">
+                                {word.dutch}
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                <div className="flex items-center gap-2">
+                                  <span>{word.dutch_sentence}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-slate-400 hover:text-slate-900"
+                                    onClick={() => handlePlayAudio(word.dutch_sentence)}
+                                  >
+                                    <Volume2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell">{word.english}</TableCell>
+                              <TableCell className="hidden sm:table-cell">
+                                {word.english_sentence}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             )}

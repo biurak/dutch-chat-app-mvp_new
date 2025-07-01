@@ -5,35 +5,75 @@ const COMMON_WORDS = new Set([
   'de', 'het', 'een', 'en', 'van', 'ik', 'je', 'dat', 'die', 'dit', 'in', 'is', 'zijn', 'te', 'met', 'op', 'aan', 'voor', 'naar', 'van', 'uit', 'over', 'door', 'bij', 'tot', 'met', 'zonder', 'onder', 'boven', 'tussen', 'naast', 'onder', 'boven', 'achter', 'voor', 'tussen', 'tijdens', 'sinds', 'tot', 'totdat', 'zodat', 'omdat', 'want', 'maar', 'of', 'als', 'dan', 'maar', 'toch', 'toen', 'nu', 'ooit', 'altijd', 'nooit', 'vaak', 'soms', 'misschien', 'wel', 'niet', 'geen', 'mijn', 'jouw', 'zijn', 'haar', 'ons', 'jullie', 'hun', 'deze', 'die', 'dit', 'dat', 'wie', 'wat', 'waar', 'waarom', 'hoe', 'welke', 'welk', 'welken', 'mij', 'mij', 'me', 'jou', 'je', 'hem', 'haar', 'het', 'ons', 'onze', 'jullie', 'hen', 'hun'
 ]);
 
-// Extract potential new words from a message
-export function extractPotentialWords(message: string, context: string = ''): NewWord[] {
-  if (!message) return [];
+/**
+ * Extracts potential new words from a message with context.
+ * Uses the provided English translation when available.
+ */
+export function extractPotentialWords(dutchText: string, englishText: string = ''): NewWord[] {
+  if (!dutchText) return [];
   
-  // Split into words and clean them up
-  const words = message
-    .toLowerCase()
-    // Split on word boundaries
-    .split(/\b/)
-    // Filter out non-word characters and common words
-    .filter(word => 
-      word.length > 2 && // Only words longer than 2 characters
-      /^[a-zàâçéèêëîïôûùüÿæœ\-']+$/i.test(word) && // Only letters and basic punctuation
-      !COMMON_WORDS.has(word.toLowerCase()) // Not in common words list
-    );
-
-  // Create a set to avoid duplicates
-  const uniqueWords = [...new Set(words)];
-
-  // Convert to NewWord format
-  return uniqueWords.map(word => ({
-    dutch: word,
-    english: `[${word}]`, // Placeholder that will be filled by the AI
-    dutch_sentence: context || `Ik gebruik het woord "${word}" in een zin.`,
-    english_sentence: context || `I use the word "${word}" in a sentence.`
-  }));
+  // Split into sentences to maintain context
+  const dutchSentences = dutchText.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  const englishSentences = englishText ? englishText.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean) : [];
+  
+  const result: NewWord[] = [];
+  const seenWords = new Set<string>();
+  
+  // Process each sentence
+  for (let i = 0; i < dutchSentences.length; i++) {
+    const dutch = dutchSentences[i];
+    const english = i < englishSentences.length ? englishSentences[i] : '';
+    
+    // Extract words from Dutch sentence (preserve original case for display)
+    const words = dutch
+      .split(/(\s+)/)
+      .filter(w => w.trim().length > 0)
+      .map(w => ({
+        original: w,
+        normalized: w.toLowerCase().replace(/[^a-zàâçéèêëîïôûùüÿæœ']/gi, '')
+      }))
+      .filter(({ normalized }) => normalized.length > 2 && !COMMON_WORDS.has(normalized));
+    
+    // Add each word with its context
+    for (const { original, normalized } of words) {
+      if (seenWords.has(normalized)) continue;
+      
+      // Find this word in the English translation if available
+      let translation = '';
+      if (english) {
+        // Simple word matching - could be enhanced with better NLP
+        const wordIndex = dutch.toLowerCase().indexOf(normalized);
+        if (wordIndex !== -1) {
+          // Try to find corresponding word in English at similar position
+          const englishWords = english.split(/\s+/);
+          const dutchWords = dutch.split(/\s+/);
+          const dutchWordIndex = dutchWords.findIndex(w => 
+            w.toLowerCase().includes(normalized));
+            
+          if (dutchWordIndex !== -1 && dutchWordIndex < englishWords.length) {
+            translation = englishWords[dutchWordIndex];
+          }
+        }
+      }
+      
+      result.push({
+        dutch: normalized,
+        english: translation || `[${normalized}]`,
+        dutch_sentence: dutch,
+        english_sentence: english || ''
+      });
+      
+      seenWords.add(normalized);
+    }
+  }
+  
+  return result;
 }
 
-// Process a conversation to extract potential new words
+/**
+ * Processes a conversation to extract potential new words.
+ * Uses available English translations when present in the messages.
+ */
 export function processConversationForNewWords(messages: Array<{ role: string; dutch: string; english?: string }>): NewWord[] {
   const potentialWords: Record<string, NewWord> = {};
   
@@ -41,12 +81,17 @@ export function processConversationForNewWords(messages: Array<{ role: string; d
     // Skip empty messages
     if (!message.dutch?.trim()) continue;
     
-    // Extract words from both user and AI messages
-    const words = extractPotentialWords(message.dutch, message.dutch);
+    // Extract words with their translations
+    const words = extractPotentialWords(
+      message.dutch, 
+      message.english || ''  // Pass the English translation if available
+    );
     
     // Add to our collection, using the word as the key to avoid duplicates
+    // Prefer words with translations over those without
     for (const word of words) {
-      if (!potentialWords[word.dutch]) {
+      if (!potentialWords[word.dutch] || 
+          (word.english && !word.english.startsWith('['))) {
         potentialWords[word.dutch] = word;
       }
     }
