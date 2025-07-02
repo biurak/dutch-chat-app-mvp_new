@@ -6,7 +6,9 @@ import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, BookOpen, Mic, Send, Volume2, VolumeX } from 'lucide-react'
 import { getTopicBySlug, type Topic, type NewWord } from '@/lib/topics'
-import { processConversationForNewWords } from '@/lib/text-utils'
+// Removed: import { processConversationForNewWords } from '@/lib/text-utils' - no longer needed
+import { fallbackWordProcessing, validateAIWords } from '@/lib/word-processing-backup'
+import { usePerformanceMonitoring } from '@/lib/performance-monitor'
 import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
 import { ReviewWordsModal } from '@/components/chat/review-words-modal'
@@ -72,7 +74,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	const [isReviewModalOpen, setReviewModalOpen] = useState(false)
 	const [newWords, setNewWords] = useState<NewWord[]>([])
 	// Initialize conversationWords as an empty array to store words from the conversation
-	const [conversationWords, setConversationWords] = useState<NewWord[]>([]);
+	const [conversationWords, setConversationWords] = useState<NewWord[]>([])
 
 	// Voice-related state
 	const [audioPlaying, setAudioPlaying] = useState<string | null>(null)
@@ -90,6 +92,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 		pitch: speechSettings.pitch,
 		volume: speechSettings.volume,
 	})
+
+	// Performance monitoring
+	const { startMessage, getSessionMetrics } = usePerformanceMonitoring()
 
 	// Toggle translation for a message
 	const toggleTranslation = useCallback((messageId: string) => {
@@ -190,6 +195,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			const userMessageId = uuidv4()
 			const aiMessageId = uuidv4()
 
+			// Start performance monitoring
+			const tracker = startMessage(userMessageId)
+
 			// STEP 1: Immediately add user message and AI typing indicator to UI
 			setMessages((prev) => [
 				...prev,
@@ -267,6 +275,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				const apiUrl = `/api/chat/${encodeURIComponent(topicSlug)}`
 				console.log('Making API request to:', apiUrl)
 
+				// Track API call
+				tracker.recordApiCall()
+
 				const response = await fetch(apiUrl, {
 					method: 'POST',
 					headers: {
@@ -282,43 +293,76 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				if (!response.ok) {
 					const errorText = await response.text()
 					console.error('API Error:', response.status, errorText)
+					tracker.recordError(`API Error: ${response.status} ${errorText}`)
 					throw new Error(`HTTP error! status: ${response.status}`)
 				}
 
 				const data = await response.json()
 
 				// Extract and store any new words from the response
-				if (data.new_words?.length) {
+				if (data.new_words?.length && validateAIWords(data.new_words)) {
+					// Track words from AI
+					tracker.recordWordsFromAI(data.new_words.length)
+
 					setNewWords((prev) => {
 						const existingWords = new Set(prev.map((word) => word.dutch))
-						const uniqueNewWords = data.new_words.filter((word: NewWord) => !existingWords.has(word.dutch))
+						const uniqueNewWords = data.new_words.filter(
+							(word: NewWord) => !existingWords.has(word.dutch)
+						)
 						return [...prev, ...uniqueNewWords]
 					})
+					
+					// Also update conversation words with AI-provided words
+					setConversationWords((prev) => {
+						const existingWords = new Set(prev.map((word) => word.dutch))
+						const uniqueNewWords = data.new_words.filter(
+							(word: NewWord) => !existingWords.has(word.dutch)
+						)
+						return [...prev, ...uniqueNewWords]
+					})
+				} else {
+					// Fallback: Use backup word processing if AI didn't provide words
+					console.warn('AI did not provide valid new_words, using fallback processing');
+					fallbackWordProcessing(message, data.ai_reply, data.translation)
+						.then((words) => {
+							tracker.recordFallbackUsed(words.length)
+							if (words.length > 0) {
+								setConversationWords((prev) => {
+									const existingWords = new Set(prev.map((word) => word.dutch))
+									const uniqueNewWords = words.filter((word) => !existingWords.has(word.dutch))
+									return [...prev, ...uniqueNewWords]
+								})
+							}
+						})
+						.catch((error) => {
+							tracker.recordError(`Fallback processing failed: ${error.message}`)
+							console.error('Fallback word processing failed:', error)
+						})
 				}
 
-				// Update conversation words from the entire conversation
-				const allMessages = [
-					...messages,
-					{
-						id: userMessageId,
-						role: 'user',
-						dutch: message,
-						english: data.translation || '',
-						showTranslation: false,
-					},
-					{
-						id: aiMessageId,
-						role: 'ai',
-						dutch: data.ai_reply,
-						english: data.translation || '',
-						showTranslation: false,
-					},
-				]
+				// Remove the separate word processing since AI now provides words
+				// const allMessages = [
+				//   ...messages,
+				//   {
+				//     id: userMessageId,
+				//     role: 'user',
+				//     dutch: message,
+				//     english: data.translation || '',
+				//     showTranslation: false,
+				//   },
+				//   {
+				//     id: aiMessageId,
+				//     role: 'ai',
+				//     dutch: data.ai_reply,
+				//     english: data.translation || '',
+				//     showTranslation: false,
+				//   },
+				// ]
 
-				// Process conversation words asynchronously
-				processConversationForNewWords(allMessages)
-				  .then(words => setConversationWords(words))
-				  .catch(error => console.error('Error processing conversation words:', error))
+				// Process conversation words asynchronously - REMOVED
+				// processConversationForNewWords(allMessages)
+				//   .then((words) => setConversationWords(words))
+				//   .catch((error) => console.error('Error processing conversation words:', error))
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
@@ -379,6 +423,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				}
 			} catch (error) {
 				console.error('Error sending message:', error)
+				tracker.recordError(`Message sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
 
 				// Show error message to the user
 				setMessages((prev) =>
@@ -402,9 +447,11 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				])
 			} finally {
 				setIsLoadingAi(false)
+				// Finish performance tracking
+				tracker.finish()
 			}
 		},
-		[currentTopic, messages, topicSlug, checkGrammar]
+		[currentTopic, messages, topicSlug, checkGrammar, startMessage]
 	)
 
 	// Handle clicking on a suggestion - send directly without showing in input
@@ -778,3 +825,4 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 		</>
 	)
 }
+
