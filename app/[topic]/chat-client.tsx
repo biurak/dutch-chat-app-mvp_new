@@ -158,41 +158,44 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	}, [textToSpeech.isPlaying, audioPlaying])
 
 	// Check grammar and get corrections for user message
-	const checkGrammar = useCallback(async (text: string) => {
-		try {
-			console.log('[checkGrammar] Sending request to /api/correct with text:', text);
-			const response = await fetch('/api/correct', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ 
-					text,
-					context: messages.map(m => m.dutch).join('\n') // Add conversation context
-				}),
-			});
-
-			const responseText = await response.text();
-			console.log('[checkGrammar] Response status:', response.status);
-			console.log('[checkGrammar] Response body:', responseText);
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
-			}
-
+	const checkGrammar = useCallback(
+		async (text: string) => {
 			try {
-				const data = JSON.parse(responseText);
-				console.log('[checkGrammar] Parsed response:', data);
-				return data;
-			} catch (parseError) {
-				console.error('[checkGrammar] Failed to parse response:', parseError);
-				throw new Error(`Invalid JSON response: ${responseText}`);
+				console.log('[checkGrammar] Sending request to /api/correct with text:', text)
+				const response = await fetch('/api/correct', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						text,
+						context: messages.map((m) => m.dutch).join('\n'), // Add conversation context
+					}),
+				})
+
+				const responseText = await response.text()
+				console.log('[checkGrammar] Response status:', response.status)
+				console.log('[checkGrammar] Response body:', responseText)
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`)
+				}
+
+				try {
+					const data = JSON.parse(responseText)
+					console.log('[checkGrammar] Parsed response:', data)
+					return data
+				} catch (parseError) {
+					console.error('[checkGrammar] Failed to parse response:', parseError)
+					throw new Error(`Invalid JSON response: ${responseText}`)
+				}
+			} catch (error) {
+				console.error('[checkGrammar] Error checking grammar:', error)
+				throw error // Re-throw to be handled by the caller
 			}
-		} catch (error) {
-			console.error('[checkGrammar] Error checking grammar:', error);
-			throw error; // Re-throw to be handled by the caller
-		}
-	}, [messages])
+		},
+		[messages]
+	)
 
 	// Handle sending a user message and processing the response
 	const handleUserMessage = useCallback(
@@ -241,18 +244,18 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			// STEP 2: Start grammar checking in background (non-blocking)
 			checkGrammar(message)
 				.then((grammarCheck) => {
-					console.log('[handleUserMessage] Grammar check result:', grammarCheck);
-					
+					console.log('[handleUserMessage] Grammar check result:', grammarCheck)
+
 					// Handle case where grammar check returns null or undefined
 					if (!grammarCheck) {
-						console.warn('No grammar check result received');
-						return;
+						console.warn('No grammar check result received')
+						return
 					}
 
-					const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0;
-					const correctedText = hasCorrections ? grammarCheck?.corrected : undefined;
-					const corrections = grammarCheck?.corrections || [];
-					const translation = grammarCheck?.translation || '';
+					const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0
+					const correctedText = hasCorrections ? grammarCheck?.corrected : undefined
+					const corrections = grammarCheck?.corrections || []
+					const translation = grammarCheck?.translation || ''
 
 					// Update user message with grammar corrections and translation
 					setMessages((prev) =>
@@ -270,20 +273,20 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 					)
 				})
 				.catch((error) => {
-					console.error('[handleUserMessage] Error in grammar check:', error);
+					console.error('[handleUserMessage] Error in grammar check:', error)
 					// Update the message to indicate there was an error with grammar checking
-					setMessages(prev => 
-						prev.map(msg => 
-							msg.id === userMessageId 
-								? { 
-									...msg, 
-									english: 'Could not check grammar',
-									corrections: [],
-									correctedText: undefined
-								} 
+					setMessages((prev) =>
+						prev.map((msg) =>
+							msg.id === userMessageId
+								? {
+										...msg,
+										english: 'Could not check grammar',
+										corrections: [],
+										correctedText: undefined,
+								  }
 								: msg
 						)
-					);
+					)
 				})
 
 			// STEP 3: Get AI response (parallel to grammar checking)
@@ -345,7 +348,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						)
 						return [...prev, ...uniqueNewWords]
 					})
-					
+
 					// Also update conversation words with AI-provided words
 					setConversationWords((prev) => {
 						const existingWords = new Set(prev.map((word) => word.dutch))
@@ -356,7 +359,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 					})
 				} else {
 					// Fallback: Use backup word processing if AI didn't provide words
-					console.warn('AI did not provide valid new_words, using fallback processing');
+					console.warn('AI did not provide valid new_words, using fallback processing')
 					fallbackWordProcessing(message, data.ai_reply, data.translation)
 						.then((words) => {
 							tracker.recordFallbackUsed(words.length)
@@ -373,57 +376,6 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 							console.error('Fallback word processing failed:', error)
 						})
 				}
-
-				// Remove the separate word processing since AI now provides words
-				// const allMessages = [
-				//   ...messages,
-				//   {
-				//     id: userMessageId,
-				//     role: 'user',
-				//     dutch: message,
-				//     english: data.translation || '',
-				//     showTranslation: false,
-				//   },
-				//   {
-				//     id: aiMessageId,
-				//     role: 'ai',
-				//     dutch: data.ai_reply,
-				//     english: data.translation || '',
-				//     showTranslation: false,
-				//   },
-				// ]
-
-				// TEMPORARILY DISABLED: Process conversation words to prevent API abuse
-				// TODO: Re-enable once API usage is optimized
-				/*
-				const newMessagesOnly = [
-					{
-						id: userMessageId,
-						role: 'user',
-						dutch: message,
-						english: data.translation || '',
-						showTranslation: false,
-					},
-					{
-						id: aiMessageId,
-						role: 'ai',
-						dutch: data.ai_reply,
-						english: data.translation || '',
-						showTranslation: false,
-					},
-				]
-				processConversationForNewWords(newMessagesOnly)
-				  .then(words => {
-					  // Merge with existing conversation words, avoiding duplicates
-					  setConversationWords(prev => {
-						  const existingWords = new Set(prev.map(word => word.dutch));
-						  const uniqueNewWords = words.filter(word => !existingWords.has(word.dutch));
-						  return [...prev, ...uniqueNewWords];
-					  });
-				  })
-				  .catch(error => console.error('Error processing conversation words:', error))
-				*/
-				console.log('[chat-client] Word extraction temporarily disabled to prevent API abuse');
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
@@ -484,7 +436,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				}
 			} catch (error) {
 				console.error('Error sending message:', error)
-				tracker.recordError(`Message sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+				tracker.recordError(
+					`Message sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+				)
 
 				// Show error message to the user
 				setMessages((prev) =>
@@ -651,8 +605,15 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						</div>
 					) : (
 						messages.map((message) => (
-							<div key={message.id} className={`space-y-2 ${message.role === 'user' ? 'pl-8' : 'pr-8'}`}>
-								<div className={`flex items-start gap-2 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+							<div
+								key={message.id}
+								className={`space-y-2 ${message.role === 'user' ? 'pl-8' : 'pr-8'}`}
+							>
+								<div
+									className={`flex items-start gap-2 ${
+										message.role === 'user' ? 'flex-row-reverse' : ''
+									}`}
+								>
 									{message.role === 'ai' ? (
 										<div className='flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
 											<Volume2 className='w-4 h-4 text-blue-600' />
@@ -663,17 +624,31 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 										</div>
 									)}
 									<div className='flex-1'>
-										<div className={`flex items-center gap-2 mb-1 ${message.role === 'user' ? 'justify-end' : ''}`}>
-											<span className='font-medium'>{message.role === 'user' ? 'You' : 'Dutch Assistant'}</span>
+										<div
+											className={`flex items-center gap-2 mb-1 ${
+												message.role === 'user' ? 'justify-end' : ''
+											}`}
+										>
+											<span className='font-medium'>
+												{message.role === 'user' ? 'You' : 'Dutch Assistant'}
+											</span>
 										</div>
-										<div className={`p-3 rounded-lg shadow-sm border ${message.role === 'user' 
-											? 'bg-blue-600 text-white border-blue-600' 
-											: 'bg-white border-slate-200'}`}>
+										<div
+											className={`p-3 rounded-lg shadow-sm border ${
+												message.role === 'user'
+													? 'bg-blue-600 text-white border-blue-600'
+													: 'bg-white border-slate-200'
+											}`}
+										>
 											<p>{message.dutch}</p>
 											{message.showTranslation && (
-												<p className={`mt-2 text-sm border-t pt-2 ${message.role === 'user' 
-													? 'border-blue-500 text-blue-100' 
-													: 'text-slate-600 border-slate-100'}`}>
+												<p
+													className={`mt-2 text-sm border-t pt-2 ${
+														message.role === 'user'
+															? 'border-blue-500 text-blue-100'
+															: 'text-slate-600 border-slate-100'
+													}`}
+												>
 													{message.english}
 												</p>
 											)}
@@ -685,7 +660,6 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 					)}
 					<div ref={messagesEndRef} />
 				</div>
-
 			</main>
 
 			{/* Fixed bottom area */}
@@ -699,8 +673,8 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 									<button
 										key={index}
 										onClick={(e) => {
-											e.preventDefault();
-											handleSubmit(undefined, suggestion.dutch);
+											e.preventDefault()
+											handleSubmit(undefined, suggestion.dutch)
 										}}
 										className='px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors whitespace-nowrap flex-shrink-0'
 									>
@@ -751,8 +725,8 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				<div className='px-4 pb-4'>
 					<button
 						onClick={(e) => {
-							e.preventDefault();
-							setReviewModalOpen(true);
+							e.preventDefault()
+							setReviewModalOpen(true)
 						}}
 						className='w-full py-2 px-4 border border-blue-300 bg-white text-blue-500 hover:bg-blue-50 font-normal text-sm rounded transition-colors duration-200 flex items-center justify-center gap-2'
 					>
