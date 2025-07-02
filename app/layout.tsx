@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ConvexAuthNextjsServerProvider } from '@convex-dev/auth/nextjs/server'
 import { ConvexClientProvider } from '@/components/convex-client-provider'
+import { Navbar } from '@/components/navigation/navbar'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,7 +21,10 @@ export default function RootLayout({
 		<ConvexAuthNextjsServerProvider>
 			<html lang='en' className='h-full'>
 				<body className={`${inter.className} min-h-screen bg-white`}>
-					<ConvexClientProvider>{children}</ConvexClientProvider>
+					<ConvexClientProvider>
+						<Navbar />
+						{children}
+					</ConvexClientProvider>
 				</body>
 			</html>
 		</ConvexAuthNextjsServerProvider>

@@ -23,12 +23,6 @@ export default function SignInPage() {
 
 	return (
 		<div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-sky-50 to-sky-100 p-4">
-			{/* App Header */}
-			<div className="flex items-center justify-center mb-8">
-				<MessageSquareText className="w-12 h-12 text-primary mr-3" />
-				<h1 className="text-4xl font-bold text-slate-800">Dutch Chat</h1>
-			</div>
-
 			{/* Sign In Card */}
 			<Card className="w-full max-w-md shadow-lg border-0 bg-white/80 backdrop-blur-sm">
 				<CardHeader className="text-center space-y-4 pb-6">
