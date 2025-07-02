@@ -41,12 +41,35 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
   const { toast } = useToast()
 
   useEffect(() => {
-    if (isOpen) {
-      // Initialize with all words when modal opens
-      setFilteredWords([...words])
-      setReviewMode('select')
+    if (isOpen && words) {
+      setIsLoading(true);
+      // Small timeout to show loading state for better UX
+      const timer = setTimeout(() => {
+        setFilteredWords([...words]);
+        setReviewMode('select');
+        setIsLoading(false);
+      }, 300); // Increased timeout to make loading state more noticeable
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Reset states when modal is closed
+      setIsLoading(false);
+      setFilteredWords([]);
     }
-  }, [isOpen, words])
+  }, [isOpen, words]);
+  
+  // Show loading state immediately when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        if (words.length === 0) {
+          setIsLoading(false);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, words.length]);
 
   const handleRemoveWord = (wordToRemove: NewWord) => {
     setFilteredWords(prev => 
@@ -74,7 +97,11 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
     }
     
     const quizletString = filteredWords
-      .map((word) => `${word.dutch}\t${word.english} — (e.g., "${word.dutch_sentence}")`)
+      .map((word) => {
+        const dutchSentence = word.dutch_sentence || '';
+        const englishSentence = word.english_sentence || dutchSentence;
+        return `${word.dutch}: ${dutchSentence}\t${word.english}: ${englishSentence}`;
+      })
       .join('\n')
 
     navigator.clipboard.writeText(quizletString).then(
@@ -97,7 +124,7 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-full w-full h-full max-h-screen flex flex-col p-0 gap-0">
+      <DialogContent className="sm:max-w-full w-full h-[90vh] max-h-[90vh] md:h-[80vh] md:max-h-[80vh] flex flex-col p-0 gap-0 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <DialogHeader className="p-4 border-b flex-row items-center">
           {reviewMode === 'preview' && (
             <Button
@@ -122,7 +149,12 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
                   Review the potential new words below. Remove any words you don't want to include.
                 </p>
                 <div className="space-y-2 mb-4 max-h-[60vh] overflow-y-auto">
-                  {filteredWords.length === 0 ? (
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+                      <span className="text-muted-foreground text-sm">Loading words...</span>
+                    </div>
+                  ) : filteredWords.length === 0 ? (
                     <p className="text-center text-muted-foreground py-4">No words to review</p>
                   ) : (
                     filteredWords.map((word) => (
@@ -164,7 +196,16 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredWords.length === 0 ? (
+                        {isLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-12">
+                              <div className="flex flex-col items-center justify-center space-y-4">
+                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+                                <span className="text-muted-foreground text-sm">Loading preview...</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredWords.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
                               No words to display

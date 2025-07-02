@@ -117,14 +117,21 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	// Voice input handlers
 	const handleVoiceInput = useCallback(() => {
 		if (!voiceRecording.isSupported) {
-			alert('Voice input not supported in this browser')
+			alert(
+				'Voice input is not supported in this browser. Please try using Chrome, Safari, or Edge.'
+			)
 			return
 		}
 
 		if (voiceRecording.isRecording) {
 			voiceRecording.stopRecording()
 		} else {
-			voiceRecording.startRecording()
+			try {
+				voiceRecording.startRecording()
+			} catch (error) {
+				console.error('Error starting voice recording:', error)
+				alert('Could not start voice recording. Please check your microphone permissions.')
+			}
 		}
 	}, [voiceRecording])
 
@@ -152,32 +159,64 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	// Handle TTS events
 	useEffect(() => {
+		const handleTTSEnd = () => {
+			if (audioPlaying) {
+				setAudioPlaying(null)
+			}
+		}
+
 		if (!textToSpeech.isPlaying && audioPlaying) {
 			setAudioPlaying(null)
 		}
-	}, [textToSpeech.isPlaying, audioPlaying])
+
+		// Clean up audio when component unmounts
+		return () => {
+			if (textToSpeech.isPlaying) {
+				textToSpeech.stop()
+				setAudioPlaying(null)
+			}
+		}
+	}, [textToSpeech.isPlaying, audioPlaying, textToSpeech])
 
 	// Check grammar and get corrections for user message
-	const checkGrammar = useCallback(async (text: string) => {
-		try {
-			const response = await fetch('/api/correct', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ text }),
-			})
+	const checkGrammar = useCallback(
+		async (text: string) => {
+			try {
+				console.log('[checkGrammar] Sending request to /api/correct with text:', text)
+				const response = await fetch('/api/correct', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						text,
+						context: messages.map((m) => m.dutch).join('\n'), // Add conversation context
+					}),
+				})
 
-			if (!response.ok) {
-				throw new Error('Failed to check grammar')
+				const responseText = await response.text()
+				console.log('[checkGrammar] Response status:', response.status)
+				console.log('[checkGrammar] Response body:', responseText)
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`)
+				}
+
+				try {
+					const data = JSON.parse(responseText)
+					console.log('[checkGrammar] Parsed response:', data)
+					return data
+				} catch (parseError) {
+					console.error('[checkGrammar] Failed to parse response:', parseError)
+					throw new Error(`Invalid JSON response: ${responseText}`)
+				}
+			} catch (error) {
+				console.error('[checkGrammar] Error checking grammar:', error)
+				throw error // Re-throw to be handled by the caller
 			}
-
-			return await response.json()
-		} catch (error) {
-			console.error('Error checking grammar:', error)
-			return null
-		}
-	}, [])
+		},
+		[messages]
+	)
 
 	// Handle sending a user message and processing the response
 	const handleUserMessage = useCallback(
@@ -226,30 +265,49 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			// STEP 2: Start grammar checking in background (non-blocking)
 			checkGrammar(message)
 				.then((grammarCheck) => {
-					if (grammarCheck) {
-						const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0
-						const correctedText = hasCorrections ? grammarCheck?.corrected : undefined
-						const corrections = grammarCheck?.corrections || []
-						const translation = grammarCheck?.translation || ''
+					console.log('[handleUserMessage] Grammar check result:', grammarCheck)
 
-						// Update user message with grammar corrections and translation
-						setMessages((prev) =>
-							prev.map((msg) =>
-								msg.id === userMessageId
-									? {
-											...msg,
-											english: translation,
-											corrections,
-											correctedText,
-											showCorrections: hasCorrections, // Show corrections by default if they exist
-									  }
-									: msg
-							)
-						)
+					// Handle case where grammar check returns null or undefined
+					if (!grammarCheck) {
+						console.warn('No grammar check result received')
+						return
 					}
+
+					const hasCorrections = (grammarCheck?.corrections?.length ?? 0) > 0
+					const correctedText = hasCorrections ? grammarCheck?.corrected : undefined
+					const corrections = grammarCheck?.corrections || []
+					const translation = grammarCheck?.translation || ''
+
+					// Update user message with grammar corrections and translation
+					setMessages((prev) =>
+						prev.map((msg) =>
+							msg.id === userMessageId
+								? {
+										...msg,
+										english: translation,
+										corrections,
+										correctedText,
+										showCorrections: hasCorrections, // Show corrections by default if they exist
+								  }
+								: msg
+						)
+					)
 				})
 				.catch((error) => {
-					console.error('Error checking grammar:', error)
+					console.error('[handleUserMessage] Error in grammar check:', error)
+					// Update the message to indicate there was an error with grammar checking
+					setMessages((prev) =>
+						prev.map((msg) =>
+							msg.id === userMessageId
+								? {
+										...msg,
+										english: 'Could not check grammar',
+										corrections: [],
+										correctedText: undefined,
+								  }
+								: msg
+						)
+					)
 				})
 
 			// STEP 3: Get AI response (parallel to grammar checking)
@@ -311,7 +369,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						)
 						return [...prev, ...uniqueNewWords]
 					})
-					
+
 					// Also update conversation words with AI-provided words
 					setConversationWords((prev) => {
 						const existingWords = new Set(prev.map((word) => word.dutch))
@@ -322,7 +380,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 					})
 				} else {
 					// Fallback: Use backup word processing if AI didn't provide words
-					console.warn('AI did not provide valid new_words, using fallback processing');
+					console.warn('AI did not provide valid new_words, using fallback processing')
 					fallbackWordProcessing(message, data.ai_reply, data.translation)
 						.then((words) => {
 							tracker.recordFallbackUsed(words.length)
@@ -339,30 +397,6 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 							console.error('Fallback word processing failed:', error)
 						})
 				}
-
-				// Remove the separate word processing since AI now provides words
-				// const allMessages = [
-				//   ...messages,
-				//   {
-				//     id: userMessageId,
-				//     role: 'user',
-				//     dutch: message,
-				//     english: data.translation || '',
-				//     showTranslation: false,
-				//   },
-				//   {
-				//     id: aiMessageId,
-				//     role: 'ai',
-				//     dutch: data.ai_reply,
-				//     english: data.translation || '',
-				//     showTranslation: false,
-				//   },
-				// ]
-
-				// Process conversation words asynchronously - REMOVED
-				// processConversationForNewWords(allMessages)
-				//   .then((words) => setConversationWords(words))
-				//   .catch((error) => console.error('Error processing conversation words:', error))
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
@@ -423,7 +457,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				}
 			} catch (error) {
 				console.error('Error sending message:', error)
-				tracker.recordError(`Message sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+				tracker.recordError(
+					`Message sending failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+				)
 
 				// Show error message to the user
 				setMessages((prev) =>
@@ -473,11 +509,12 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	// Handle form submission
 	const handleSubmit = useCallback(
-		async (e: FormEvent) => {
-			e.preventDefault()
-			if (!inputValue.trim() || isLoadingAi) return
+		async (e?: React.FormEvent, messageText?: string) => {
+			e?.preventDefault()
 
-			const message = inputValue.trim()
+			const message = messageText || inputValue.trim()
+			if (!message || isLoadingAi) return
+
 			setInputValue('')
 
 			try {
@@ -570,220 +607,228 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	}
 
 	return (
-		<>
-			<div className='flex flex-col h-screen bg-slate-50'>
-				{/* Header */}
-				<header className='bg-white shadow-sm p-4 flex items-center sticky top-0 z-10 h-16'>
-					<Button variant='ghost' size='icon' onClick={() => router.back()} className='mr-2'>
-						<ArrowLeft className='w-5 h-5' />
-					</Button>
-					<h1 className='text-lg font-semibold'>{currentTopic?.title || 'Loading...'}</h1>
-				</header>
+		<div className='flex flex-col h-screen bg-slate-50'>
+			{/* Header */}
+			<header className='bg-white shadow-sm p-4 flex items-center fixed top-0 left-0 right-0 z-20 h-16 border-b border-slate-200'>
+				<Button variant='ghost' size='icon' onClick={() => router.back()} className='mr-2'>
+					<ArrowLeft className='w-5 h-5' />
+				</Button>
+				<h1 className='text-lg font-semibold'>{currentTopic?.title || 'Loading...'}</h1>
+			</header>
 
+			{/* Main content area */}
+			<main className='flex-1 overflow-y-auto pt-16 pb-32 container xl mx-auto'>
 				{/* Messages */}
-				<div className='flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50'>
+				<div className='p-4 space-y-4'>
 					{messages.length === 0 ? (
 						<div className='flex items-center justify-center h-full'>
-							<p className='text-slate-500'>Loading chat...</p>
+							<p className='text-slate-500'>Start the conversation...</p>
 						</div>
 					) : (
 						messages.map((message) => (
 							<div
 								key={message.id}
-								className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+								className={`mb-4 ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
 							>
-								<div
-									className={`max-w-3xl rounded-lg px-4 py-2 ${
-										message.role === 'user'
-											? 'bg-blue-600 text-white'
-											: 'bg-white border border-slate-200 shadow-sm'
-									}`}
-								>
-									{/* Show corrected text if available and visible */}
-									{message.correctedText && message.showCorrections ? (
-										<div className='whitespace-pre-wrap relative'>
-											<div className='bg-yellow-50 text-yellow-900 px-2 py-1 rounded mb-1 text-sm'>
-												✏️ Corrected version
-											</div>
-											<p className='whitespace-pre-wrap'>{message.correctedText}</p>
-											{message.corrections && message.corrections.length > 0 && (
-												<div className='mt-2 pt-2 border-t border-opacity-20 border-slate-300 text-xs'>
-													{message.corrections.map((correction, idx) => (
-														<div key={idx} className='mb-1'>
-															<span className='line-through text-red-300'>
-																{correction.original}
-															</span>
-															{' → '}
-															<span className='text-green-200'>{correction.corrected}</span>
-															<span className='text-blue-100 block'>{correction.explanation}</span>
-														</div>
-													))}
-												</div>
-											)}
-										</div>
-									) : (
-										<p className='whitespace-pre-wrap'>
-											{message.correctedText || message.dutch}
-											{message.corrections && message.corrections.length > 0 && (
-												<span className='ml-2 text-xs opacity-70'>
-													{message.showCorrections
-														? 'Hide corrections'
-														: `✏️ ${message.corrections.length} correction${
-																message.corrections.length > 1 ? 's' : ''
-														  } applied`}
-												</span>
-											)}
-										</p>
-									)}
-
-									{/* Translation section */}
-									{message.showTranslation && message.english && (
-										<div className='mt-1 pt-1 border-t border-opacity-20 border-slate-300 text-sm italic'>
-											{message.english}
-										</div>
-									)}
-
-									{/* Action buttons - only show if there are corrections or translations */}
-									{
-										<div className='flex justify-between items-center mt-1 pt-1 border-t border-opacity-20 border-slate-300 text-xs text-slate-300'>
-											{/* Toggle corrections button (for user messages with corrections) */}
-											{message.role === 'user' &&
-												message.corrections &&
-												message.corrections.length > 0 && (
-													<button
-														onClick={(e) => {
-															e.stopPropagation()
-															toggleCorrections(message.id)
-														}}
-														className='text-xs hover:underline focus:outline-none'
-													>
-														{message.showCorrections ? 'Hide corrections' : 'Show corrections'}
-													</button>
-												)}
-
-											{/* Toggle translation button */}
-											<button
-												onClick={(e) => {
-													e.stopPropagation()
-													toggleTranslation(message.id)
-												}}
-												className='text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline'
-												disabled={!message.english}
-											>
-												{message.showTranslation ? 'Hide translation' : 'Show translation'}
-											</button>
-
-											{/* Speaker buttons */}
-											<div className='flex gap-2 ml-auto'>
-												{/* Speaker button for Dutch text */}
+								<div className={`max-w-[75%] md:max-w-[60%] lg:max-w-[50%]`}>
+									<div
+										className={`flex items-center gap-2 mb-1 ${
+											message.role === 'user' ? 'justify-end' : 'justify-start'
+										}`}
+									>
+										<span className='text-xs text-slate-500 font-medium'>
+											{message.role === 'user' ? 'You' : 'Dutch Assistant'}
+										</span>
+									</div>
+									<div
+										className={`relative px-4 py-3 rounded-2xl shadow-sm ${
+											message.role === 'user'
+												? 'bg-blue-500 text-white rounded-br-md'
+												: 'bg-white border border-slate-100 text-slate-800 rounded-bl-md'
+										}`}
+									>
+										<div className='flex items-start justify-between gap-2'>
+											<p className='flex-1 leading-relaxed'>{message.dutch}</p>
+											<div className='flex items-center gap-1 flex-shrink-0 ml-2'>
 												<button
-													onClick={(e) => {
-														e.stopPropagation()
-														handlePlayAudio(message.id, message.dutch, 'nl-NL')
-													}}
-													disabled={!textToSpeech.isSupported || !message.dutch}
-													className='text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline flex items-center gap-1'
+													onClick={() =>
+														handlePlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
+													}
+													className={`p-1.5 rounded-full hover:bg-opacity-20 transition-colors ${
+														message.role === 'user'
+															? 'hover:bg-white text-white opacity-90 hover:opacity-100'
+															: 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
+													}`}
 													title='Play Dutch audio'
 												>
-													{audioPlaying === message.id ? (
-														<VolumeX className='w-3 h-3' />
+													{audioPlaying === `${message.id}-dutch` ? (
+														<VolumeX className='w-3.5 h-3.5' />
 													) : (
-														<Volume2 className='w-3 h-3' />
+														<Volume2 className='w-3.5 h-3.5' />
 													)}
-													{audioPlaying === message.id ? 'Stop' : 'Play Dutch'}
 												</button>
-
-												{/* Speaker button for English translation */}
 												{message.english && (
 													<button
-														onClick={(e) => {
-															e.stopPropagation()
-															handlePlayAudio(`${message.id}-en`, message.english, 'en-US')
-														}}
-														disabled={!textToSpeech.isSupported}
-														className='text-xs hover:underline focus:outline-none disabled:text-slate-400 disabled:no-underline flex items-center gap-1'
-														title='Play English audio'
+														onClick={() => toggleTranslation(message.id)}
+														className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+															message.role === 'user'
+																? 'hover:bg-white hover:bg-opacity-20 text-white opacity-90 hover:opacity-100'
+																: 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
+														}`}
+														title='Toggle translation'
 													>
-														{audioPlaying === `${message.id}-en` ? (
-															<VolumeX className='w-3 h-3' />
-														) : (
-															<Volume2 className='w-3 h-3' />
-														)}
-														{audioPlaying === `${message.id}-en` ? 'Stop' : 'Play English'}
+														EN
 													</button>
 												)}
+												{message.role === 'user' &&
+													message.corrections &&
+													message.corrections.length > 0 && (
+														<button
+															onClick={() => toggleCorrections(message.id)}
+															className='px-2 py-1 rounded-full text-xs font-medium transition-colors hover:bg-white hover:bg-opacity-20 text-white opacity-90 hover:opacity-100'
+															title='Toggle corrections'
+														>
+															✓
+														</button>
+													)}
 											</div>
 										</div>
-									}
+										{message.showTranslation && message.english && (
+											<div
+												className={`mt-3 pt-2 text-sm border-t ${
+													message.role === 'user'
+														? 'border-blue-400 border-opacity-30'
+														: 'border-slate-100'
+												}`}
+											>
+												<div className='flex items-start justify-between gap-2'>
+													<p
+														className={`flex-1 leading-relaxed ${
+															message.role === 'user' ? 'text-blue-100' : 'text-slate-600'
+														}`}
+													>
+														{message.english}
+													</p>
+													{message.english && (
+														<button
+															onClick={() =>
+																handlePlayAudio(`${message.id}-english`, message.english, 'en-US')
+															}
+															className={`p-1 rounded-full transition-colors flex-shrink-0 ${
+																message.role === 'user'
+																	? 'hover:bg-white hover:bg-opacity-20 text-blue-100 hover:text-white'
+																	: 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
+															}`}
+															title='Play English audio'
+														>
+															{audioPlaying === `${message.id}-english` ? (
+																<VolumeX className='w-3 h-3' />
+															) : (
+																<Volume2 className='w-3 h-3' />
+															)}
+														</button>
+													)}
+												</div>
+											</div>
+										)}
+										{message.role === 'user' &&
+											message.showCorrections &&
+											message.corrections &&
+											message.corrections.length > 0 && (
+												<div className='mt-3 pt-2 text-sm border-t border-blue-400 border-opacity-30'>
+													<p className='font-medium mb-2 text-blue-100'>Corrections:</p>
+													{message.correctedText && (
+														<div className='mb-2 p-2 bg-blue-400 bg-opacity-20 rounded-lg'>
+															<span className='font-medium text-blue-100'>Corrected: </span>
+															<span className='text-blue-50'>{message.correctedText}</span>
+														</div>
+													)}
+													<div className='space-y-2'>
+														{message.corrections.map((correction, index) => (
+															<div key={index} className='text-xs bg-blue-400 bg-opacity-20 p-2 rounded-lg'>
+																<div className='flex items-center gap-2 mb-1'>
+																	<span className='line-through opacity-75 text-blue-200'>
+																		{correction.original}
+																	</span>
+																	<span className='text-blue-100'>→</span>
+																	<span className='font-medium text-blue-50'>{correction.corrected}</span>
+																</div>
+																{correction.explanation && (
+																	<p className='text-blue-100 mt-1 leading-relaxed'>
+																		{correction.explanation}
+																	</p>
+																)}
+															</div>
+														))}
+													</div>
+												</div>
+											)}
+									</div>
 								</div>
 							</div>
 						))
 					)}
 					<div ref={messagesEndRef} />
 				</div>
+			</main>
 
+			{/* Fixed bottom area */}
+			<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10 flex flex-col gap-4 py-4'>
 				{/* Suggestions */}
-				{currentSuggestions.length > 0 && (
-					<div className='bg-white border-t border-slate-200 p-3 overflow-x-auto shadow-sm'>
-						<div className='flex flex-wrap gap-2'>
-							{currentSuggestions.map((suggestion, index) => {
-								if (!suggestion || !suggestion.dutch) {
-									console.error('Invalid suggestion at index', index, ':', suggestion)
-									return null
-								}
-
-								return (
-									<Button
-										key={`${suggestion.dutch}-${index}`}
-										variant='outline'
-										size='sm'
-										onClick={(e) => {
-											e.preventDefault()
-											e.stopPropagation()
-											console.log('Button click event:', e)
-											handleSuggestionClick(suggestion)
-										}}
-										onMouseDown={(e) => {
-											// Prevent input blur when clicking suggestions
-											e.preventDefault()
-										}}
-										className='whitespace-nowrap text-sm cursor-pointer active:scale-95 transition-transform'
-										title={suggestion.english || ''}
-									>
-										{suggestion.dutch}
-									</Button>
-								)
-							})}
-						</div>
-					</div>
-				)}
-
-				{/* Input */}
-				<div className='bg-white border-t border-slate-200 p-4 sticky bottom-0'>
-					{/* Recording indicator */}
-					{voiceRecording.isRecording && (
-						<div className='absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs z-10'>
-							🎤 Recording...
+				<div className='flex items-center justify-between container xl '>
+					{currentSuggestions.length > 0 && (
+						<div className='bg-white px-0 py-3 border-slate-200 container mx-auto xl '>
+							<div className='w-full'>
+								<div className='flex flex-wrap gap-2 px-0'>
+									{currentSuggestions.map((suggestion, index) => (
+										<button
+											key={index}
+											onClick={(e) => {
+												e.preventDefault()
+												handleSubmit(undefined, suggestion.dutch)
+											}}
+											className='px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors whitespace-nowrap flex-shrink-0'
+										>
+											{suggestion.dutch}
+										</button>
+									))}
+								</div>
+							</div>
 						</div>
 					)}
 
-					{/* Voice recording error */}
-					{voiceRecording.error && (
-						<div className='mb-2 p-2 bg-red-100 border border-red-300 text-red-700 rounded text-sm'>
-							{voiceRecording.error}
-						</div>
-					)}
+					<button
+						onClick={(e) => {
+							e.preventDefault()
+							setReviewModalOpen(true)
+						}}
+						className='w-full py-2 px-4 border border-blue-300 bg-white text-blue-500 hover:bg-blue-50 font-normal text-sm rounded transition-colors duration-200 flex items-center justify-center gap-2 max-w-xs mx-auto'
+					>
+						<BookOpen className='h-4 w-4' />
+						<span>End the chat and review new words</span>
+					</button>
+				</div>
 
+				{/* Input area */}
+				<div className='container mx-auto xl'>
 					<form onSubmit={handleSubmit} className='flex gap-2'>
-						<input
-							ref={inputRef}
-							type='text'
-							value={inputValue}
-							onChange={(e) => setInputValue(e.target.value)}
-							placeholder='Type a message...'
-							className='flex-1 border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50'
-							disabled={isLoadingAi}
-						/>
+						<div className='flex-1 relative'>
+							<input
+								ref={inputRef}
+								type='text'
+								value={inputValue}
+								onChange={(e) => setInputValue(e.target.value)}
+								placeholder='Type your message in Dutch...'
+								className='w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
+								disabled={isLoadingAi}
+							/>
+							{voiceRecording.isRecording && (
+								<div className='absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1'>
+									<div className='w-2 h-2 bg-red-500 rounded-full animate-pulse'></div>
+									<span className='text-xs text-red-500 font-medium'>Recording...</span>
+								</div>
+							)}
+						</div>
 						<Button
 							type='submit'
 							disabled={!inputValue.trim() || isLoadingAi}
@@ -801,28 +846,23 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 							className={`${
 								voiceRecording.isRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse' : ''
 							}`}
+							title={voiceRecording.isRecording ? 'Stop recording' : 'Start voice recording'}
 						>
 							<Mic className={`w-4 h-4 ${voiceRecording.isRecording ? 'text-white' : ''}`} />
 						</Button>
 					</form>
 				</div>
+
+				{/* Review Words Button */}
+
+				<ReviewWordsModal
+					isOpen={isReviewModalOpen}
+					onClose={() => setReviewModalOpen(false)}
+					words={[...new Set([...newWords, ...conversationWords])]}
+				/>
+				<Toaster />
 			</div>
-
-			<Button
-				className='fixed bottom-24 right-4 rounded-full h-14 shadow-lg z-20'
-				onClick={() => setReviewModalOpen(true)}
-			>
-				<BookOpen className='mr-2 h-5 w-5' />
-				Review words
-			</Button>
-
-			<ReviewWordsModal
-				isOpen={isReviewModalOpen}
-				onClose={() => setReviewModalOpen(false)}
-				words={[...new Set([...newWords, ...conversationWords])]}
-			/>
-			<Toaster />
-		</>
+		</div>
 	)
 }
 
