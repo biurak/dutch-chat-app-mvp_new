@@ -1,5 +1,44 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { LRUCache } from 'lru-cache';
+
+// Enhanced caching for translations
+const translationCache = new LRUCache<string, string>({
+  max: 5000, // Store up to 5000 translations
+  ttl: 1000 * 60 * 60 * 24, // Cache for 24 hours
+});
+
+// Rate limiting configuration
+const RATE_LIMIT = {
+  WINDOW_MS: 60 * 1000, // 1 minute
+  MAX_REQUESTS: 30, // Max requests per window
+};
+
+// In-memory rate limit store
+const rateLimitCache = new LRUCache<string, number[]>({
+  max: 1000, // Max number of unique IPs to track
+  ttl: RATE_LIMIT.WINDOW_MS,
+});
+
+// Helper function to check rate limit
+function checkRateLimit(ip: string): { isRateLimited: boolean; retryAfter: number } {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT.WINDOW_MS;
+  
+  const requestTimestamps = rateLimitCache.get(ip) || [];
+  const recentRequests = requestTimestamps.filter(timestamp => timestamp > windowStart);
+  
+  // Add current request
+  recentRequests.push(now);
+  rateLimitCache.set(ip, recentRequests);
+  
+  const isRateLimited = recentRequests.length > RATE_LIMIT.MAX_REQUESTS;
+  
+  return {
+    isRateLimited,
+    retryAfter: isRateLimited ? Math.ceil((recentRequests[0] + RATE_LIMIT.WINDOW_MS - now) / 1000) : 0,
+  };
+}
 
 // Comprehensive list of A1 level Dutch words to filter out
 const A1_LEVEL_WORDS = new Set([
@@ -43,6 +82,32 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 export async function POST(request: Request) {
+  const clientIp = request.headers.get('x-forwarded-for') || 'unknown';
+  const requestId = Math.random().toString(36).substring(2, 9);
+  
+  console.log(`[${requestId}] [${clientIp}] [translate/route] Received request`);
+  
+  // Check rate limit
+  const rateLimit = checkRateLimit(clientIp);
+  if (rateLimit.isRateLimited) {
+    console.warn(`[${requestId}] Rate limit exceeded for IP: ${clientIp}`);
+    return NextResponse.json(
+      { 
+        error: 'Too many requests',
+        details: `Please try again in ${rateLimit.retryAfter} seconds`,
+        retryAfter: rateLimit.retryAfter,
+      },
+      { 
+        status: 429,
+        headers: {
+          'Retry-After': rateLimit.retryAfter.toString(),
+          'X-RateLimit-Limit': RATE_LIMIT.MAX_REQUESTS.toString(),
+          'X-RateLimit-Remaining': Math.max(0, RATE_LIMIT.MAX_REQUESTS - (rateLimitCache.get(clientIp)?.length || 0)).toString(),
+        }
+      }
+    );
+  }
+
   try {
     const { word, context } = await request.json();
     
@@ -53,29 +118,41 @@ export async function POST(request: Request) {
       );
     }
 
+    // Create cache key
+    const cacheKey = `${word.toLowerCase()}:${context.toLowerCase()}`;
+    
+    // Check cache first
+    const cachedTranslation = translationCache.get(cacheKey);
+    if (cachedTranslation !== undefined) {
+      console.log(`[${requestId}] Cache hit for word: "${word}"`);
+      return NextResponse.json({ translation: cachedTranslation });
+    }
+
     // Convert to lowercase and remove any punctuation for checking
     const normalizedWord = word.toLowerCase().replace(/[^a-zàâçéèêëîïôûùüÿæœ']/gi, '');
     
     // Skip very short words (likely A1 level)
     if (normalizedWord.length <= 3) {
+      translationCache.set(cacheKey, ''); // Cache the empty result
       return NextResponse.json({ translation: '' });
     }
     
     // Check against our A1 words list
     if (A1_LEVEL_WORDS.has(normalizedWord)) {
+      translationCache.set(cacheKey, ''); // Cache the empty result
       return NextResponse.json({ translation: '' });
     }
     
     // Check if OpenAI client is properly initialized
     if (!openai) {
-      console.error('OpenAI client not initialized');
+      console.error(`[${requestId}] OpenAI client not initialized`);
       return NextResponse.json(
         { error: 'Translation service is not available' },
         { status: 503 }
       );
     }
     
-    console.log('Translating word:', { word, context });
+    console.log(`[${requestId}] Translating word: "${word}" with context: "${context}"`);
     
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
@@ -98,15 +175,18 @@ export async function POST(request: Request) {
       max_tokens: 20
     });
 
-    console.log('Translation response:', JSON.stringify(completion, null, 2));
+    console.log(`[${requestId}] Translation response received`);
     
     const translation = completion.choices[0]?.message?.content?.trim() || '';
-    console.log('Translation result:', { word, translation });
+    console.log(`[${requestId}] Translation result:`, { word, translation });
+    
+    // Cache the result (including empty translations)
+    translationCache.set(cacheKey, translation);
     
     return NextResponse.json({ translation });
     
   } catch (error: unknown) {
-    console.error('Translation error:', error);
+    console.error(`[${requestId}] Translation error:`, error);
     
     const errorDetails = error instanceof Error ? {
       message: error.message,
@@ -116,7 +196,7 @@ export async function POST(request: Request) {
       message: String(error)
     };
     
-    console.error('Error details:', errorDetails);
+    console.error(`[${requestId}] Error details:`, errorDetails);
     
     return NextResponse.json(
       { 

@@ -393,10 +393,37 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				//   },
 				// ]
 
-				// Process conversation words asynchronously - REMOVED
-				// processConversationForNewWords(allMessages)
-				//   .then((words) => setConversationWords(words))
-				//   .catch((error) => console.error('Error processing conversation words:', error))
+				// TEMPORARILY DISABLED: Process conversation words to prevent API abuse
+				// TODO: Re-enable once API usage is optimized
+				/*
+				const newMessagesOnly = [
+					{
+						id: userMessageId,
+						role: 'user',
+						dutch: message,
+						english: data.translation || '',
+						showTranslation: false,
+					},
+					{
+						id: aiMessageId,
+						role: 'ai',
+						dutch: data.ai_reply,
+						english: data.translation || '',
+						showTranslation: false,
+					},
+				]
+				processConversationForNewWords(newMessagesOnly)
+				  .then(words => {
+					  // Merge with existing conversation words, avoiding duplicates
+					  setConversationWords(prev => {
+						  const existingWords = new Set(prev.map(word => word.dutch));
+						  const uniqueNewWords = words.filter(word => !existingWords.has(word.dutch));
+						  return [...prev, ...uniqueNewWords];
+					  });
+				  })
+				  .catch(error => console.error('Error processing conversation words:', error))
+				*/
+				console.log('[chat-client] Word extraction temporarily disabled to prevent API abuse');
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
