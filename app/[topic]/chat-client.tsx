@@ -117,14 +117,21 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	// Voice input handlers
 	const handleVoiceInput = useCallback(() => {
 		if (!voiceRecording.isSupported) {
-			alert('Voice input not supported in this browser')
+			alert(
+				'Voice input is not supported in this browser. Please try using Chrome, Safari, or Edge.'
+			)
 			return
 		}
 
 		if (voiceRecording.isRecording) {
 			voiceRecording.stopRecording()
 		} else {
-			voiceRecording.startRecording()
+			try {
+				voiceRecording.startRecording()
+			} catch (error) {
+				console.error('Error starting voice recording:', error)
+				alert('Could not start voice recording. Please check your microphone permissions.')
+			}
 		}
 	}, [voiceRecording])
 
@@ -152,10 +159,24 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	// Handle TTS events
 	useEffect(() => {
+		const handleTTSEnd = () => {
+			if (audioPlaying) {
+				setAudioPlaying(null)
+			}
+		}
+
 		if (!textToSpeech.isPlaying && audioPlaying) {
 			setAudioPlaying(null)
 		}
-	}, [textToSpeech.isPlaying, audioPlaying])
+
+		// Clean up audio when component unmounts
+		return () => {
+			if (textToSpeech.isPlaying) {
+				textToSpeech.stop()
+				setAudioPlaying(null)
+			}
+		}
+	}, [textToSpeech.isPlaying, audioPlaying, textToSpeech])
 
 	// Check grammar and get corrections for user message
 	const checkGrammar = useCallback(
@@ -596,7 +617,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			</header>
 
 			{/* Main content area */}
-			<main className='flex-1 overflow-y-auto pt-16 pb-32'>
+			<main className='flex-1 overflow-y-auto pt-16 pb-32 container xl mx-auto'>
 				{/* Messages */}
 				<div className='p-4 space-y-4'>
 					{messages.length === 0 ? (
@@ -607,22 +628,13 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						messages.map((message) => (
 							<div
 								key={message.id}
-								className={`space-y-2 ${message.role === 'user' ? 'pl-8' : 'pr-8'}`}
+								className={`space-y-2 ${message.role === 'user' ? 'pl-8' : 'pr-8'} `}
 							>
 								<div
-									className={`flex items-start gap-2 ${
-										message.role === 'user' ? 'flex-row-reverse' : ''
-									}`}
+									className={`flex items-start ${
+										message.role === 'user' ? 'justify-self-end' : 'justify-self-start'
+									}  gap-2 md:w-1/3 xs:w-3/4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
 								>
-									{message.role === 'ai' ? (
-										<div className='flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
-											<Volume2 className='w-4 h-4 text-blue-600' />
-										</div>
-									) : (
-										<div className='flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center'>
-											<Volume2 className='w-4 h-4 text-blue-600' />
-										</div>
-									)}
 									<div className='flex-1'>
 										<div
 											className={`flex items-center gap-2 mb-1 ${
@@ -640,18 +652,95 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 													: 'bg-white border-slate-200'
 											}`}
 										>
-											<p>{message.dutch}</p>
-											{message.showTranslation && (
-												<p
+											<div className='flex items-start justify-between gap-2'>
+												<p className='flex-1'>{message.dutch}</p>
+												<div className='flex items-center gap-1 flex-shrink-0'>
+													<button
+														onClick={() =>
+															handlePlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
+														}
+														className={`p-1 rounded hover:bg-opacity-20 transition-colors ${
+															message.role === 'user'
+																? 'hover:bg-white text-white'
+																: 'hover:bg-slate-200 text-slate-600'
+														}`}
+														title='Play Dutch audio'
+													>
+														{audioPlaying === `${message.id}-dutch` ? (
+															<VolumeX className='w-4 h-4' />
+														) : (
+															<Volume2 className='w-4 h-4' />
+														)}
+													</button>
+													{message.english && (
+														<button
+															onClick={() => toggleTranslation(message.id)}
+															className={`p-1 rounded text-xs font-medium transition-colors ${
+																message.role === 'user'
+																	? 'hover:bg-white hover:bg-opacity-20 text-white'
+																	: 'hover:bg-slate-200 text-slate-600'
+															}`}
+															title='Toggle translation'
+														>
+															EN
+														</button>
+													)}
+													{message.role === 'user' &&
+														message.corrections &&
+														message.corrections.length > 0 && (
+															<button
+																onClick={() => toggleCorrections(message.id)}
+																className='p-1 rounded text-xs font-medium transition-colors hover:bg-white hover:bg-opacity-20 text-white'
+																title='Toggle corrections'
+															>
+																✓
+															</button>
+														)}
+												</div>
+											</div>
+											{message.showTranslation && message.english && (
+												<div
 													className={`mt-2 text-sm border-t pt-2 ${
 														message.role === 'user'
 															? 'border-blue-500 text-blue-100'
 															: 'text-slate-600 border-slate-100'
 													}`}
 												>
-													{message.english}
-												</p>
+													<div className='flex items-start justify-between gap-2'>
+														<p className='flex-1'>{message.english}</p>
+													</div>
+												</div>
 											)}
+											{message.role === 'user' &&
+												message.showCorrections &&
+												message.corrections &&
+												message.corrections.length > 0 && (
+													<div className='mt-2 text-sm border-t pt-2 border-blue-500 text-blue-100'>
+														<p className='font-medium mb-1'>Corrections:</p>
+														{message.correctedText && (
+															<p className='mb-2'>
+																<span className='font-medium'>Corrected: </span>
+																{message.correctedText}
+															</p>
+														)}
+														<div className='space-y-1'>
+															{message.corrections.map((correction, index) => (
+																<div key={index} className='text-xs'>
+																	<span className='line-through opacity-75'>
+																		{correction.original}
+																	</span>
+																	{' → '}
+																	<span className='font-medium'>{correction.corrected}</span>
+																	{correction.explanation && (
+																		<span className='block opacity-90 mt-1'>
+																			{correction.explanation}
+																		</span>
+																	)}
+																</div>
+															))}
+														</div>
+													</div>
+												)}
 										</div>
 									</div>
 								</div>
@@ -663,41 +752,62 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			</main>
 
 			{/* Fixed bottom area */}
-			<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10'>
+			<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10 flex flex-col gap-4 py-4'>
 				{/* Suggestions */}
-				{currentSuggestions.length > 0 && (
-					<div className='bg-white p-3 border-b border-slate-200'>
-						<div className='w-full'>
-							<div className='flex flex-wrap gap-2 px-1'>
-								{currentSuggestions.map((suggestion, index) => (
-									<button
-										key={index}
-										onClick={(e) => {
-											e.preventDefault()
-											handleSubmit(undefined, suggestion.dutch)
-										}}
-										className='px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors whitespace-nowrap flex-shrink-0'
-									>
-										{suggestion.dutch}
-									</button>
-								))}
+				<div className='flex items-center justify-between container xl '>
+					{currentSuggestions.length > 0 && (
+						<div className='bg-white px-0 py-3 border-slate-200 container mx-auto xl '>
+							<div className='w-full'>
+								<div className='flex flex-wrap gap-2 px-0'>
+									{currentSuggestions.map((suggestion, index) => (
+										<button
+											key={index}
+											onClick={(e) => {
+												e.preventDefault()
+												handleSubmit(undefined, suggestion.dutch)
+											}}
+											className='px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors whitespace-nowrap flex-shrink-0'
+										>
+											{suggestion.dutch}
+										</button>
+									))}
+								</div>
 							</div>
 						</div>
-					</div>
-				)}
+					)}
+
+					<button
+						onClick={(e) => {
+							e.preventDefault()
+							setReviewModalOpen(true)
+						}}
+						className='w-full py-2 px-4 border border-blue-300 bg-white text-blue-500 hover:bg-blue-50 font-normal text-sm rounded transition-colors duration-200 flex items-center justify-center gap-2 max-w-xs mx-auto'
+					>
+						<BookOpen className='h-4 w-4' />
+						<span>End the chat and review new words</span>
+					</button>
+				</div>
 
 				{/* Input area */}
-				<div className='p-4'>
+				<div className='container mx-auto xl'>
 					<form onSubmit={handleSubmit} className='flex gap-2'>
-						<input
-							ref={inputRef}
-							type='text'
-							value={inputValue}
-							onChange={(e) => setInputValue(e.target.value)}
-							placeholder='Type your message in Dutch...'
-							className='flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
-							disabled={isLoadingAi}
-						/>
+						<div className='flex-1 relative'>
+							<input
+								ref={inputRef}
+								type='text'
+								value={inputValue}
+								onChange={(e) => setInputValue(e.target.value)}
+								placeholder='Type your message in Dutch...'
+								className='w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
+								disabled={isLoadingAi}
+							/>
+							{voiceRecording.isRecording && (
+								<div className='absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1'>
+									<div className='w-2 h-2 bg-red-500 rounded-full animate-pulse'></div>
+									<span className='text-xs text-red-500 font-medium'>Recording...</span>
+								</div>
+							)}
+						</div>
 						<Button
 							type='submit'
 							disabled={!inputValue.trim() || isLoadingAi}
@@ -715,6 +825,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 							className={`${
 								voiceRecording.isRecording ? 'bg-red-600 hover:bg-red-700 animate-pulse' : ''
 							}`}
+							title={voiceRecording.isRecording ? 'Stop recording' : 'Start voice recording'}
 						>
 							<Mic className={`w-4 h-4 ${voiceRecording.isRecording ? 'text-white' : ''}`} />
 						</Button>
@@ -722,18 +833,6 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				</div>
 
 				{/* Review Words Button */}
-				<div className='px-4 pb-4'>
-					<button
-						onClick={(e) => {
-							e.preventDefault()
-							setReviewModalOpen(true)
-						}}
-						className='w-full py-2 px-4 border border-blue-300 bg-white text-blue-500 hover:bg-blue-50 font-normal text-sm rounded transition-colors duration-200 flex items-center justify-center gap-2'
-					>
-						<BookOpen className='h-4 w-4' />
-						<span>End the chat and review new words</span>
-					</button>
-				</div>
 
 				<ReviewWordsModal
 					isOpen={isReviewModalOpen}
