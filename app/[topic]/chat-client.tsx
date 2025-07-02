@@ -71,7 +71,8 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	const [inputValue, setInputValue] = useState('')
 	const [isReviewModalOpen, setReviewModalOpen] = useState(false)
 	const [newWords, setNewWords] = useState<NewWord[]>([])
-	const [conversationWords, setConversationWords] = useState<NewWord[]>([])
+	// Initialize conversationWords as an empty array to store words from the conversation
+	const [conversationWords, setConversationWords] = useState<NewWord[]>([]);
 
 	// Voice-related state
 	const [audioPlaying, setAudioPlaying] = useState<string | null>(null)
@@ -314,8 +315,10 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 					},
 				]
 
-				const extractedWords = processConversationForNewWords(allMessages)
-				setConversationWords(extractedWords)
+				// Process conversation words asynchronously
+				processConversationForNewWords(allMessages)
+				  .then(words => setConversationWords(words))
+				  .catch(error => console.error('Error processing conversation words:', error))
 
 				// STEP 4: Update the AI message with the response
 				setMessages((prev) =>
