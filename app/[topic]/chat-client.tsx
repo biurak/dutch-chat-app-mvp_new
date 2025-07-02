@@ -628,120 +628,141 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 						messages.map((message) => (
 							<div
 								key={message.id}
-								className={`space-y-2 ${message.role === 'user' ? 'pl-8' : 'pr-8'} `}
+								className={`mb-4 ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}
 							>
-								<div
-									className={`flex items-start ${
-										message.role === 'user' ? 'justify-self-end' : 'justify-self-start'
-									}  gap-2 md:w-1/3 xs:w-3/4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-								>
-									<div className='flex-1'>
-										<div
-											className={`flex items-center gap-2 mb-1 ${
-												message.role === 'user' ? 'justify-end' : ''
-											}`}
-										>
-											<span className='font-medium'>
-												{message.role === 'user' ? 'You' : 'Dutch Assistant'}
-											</span>
-										</div>
-										<div
-											className={`p-3 rounded-lg shadow-sm border ${
-												message.role === 'user'
-													? 'bg-blue-600 text-white border-blue-600'
-													: 'bg-white border-slate-200'
-											}`}
-										>
-											<div className='flex items-start justify-between gap-2'>
-												<p className='flex-1'>{message.dutch}</p>
-												<div className='flex items-center gap-1 flex-shrink-0'>
+								<div className={`max-w-[75%] md:max-w-[60%] lg:max-w-[50%]`}>
+									<div
+										className={`flex items-center gap-2 mb-1 ${
+											message.role === 'user' ? 'justify-end' : 'justify-start'
+										}`}
+									>
+										<span className='text-xs text-slate-500 font-medium'>
+											{message.role === 'user' ? 'You' : 'Dutch Assistant'}
+										</span>
+									</div>
+									<div
+										className={`relative px-4 py-3 rounded-2xl shadow-sm ${
+											message.role === 'user'
+												? 'bg-blue-500 text-white rounded-br-md'
+												: 'bg-white border border-slate-100 text-slate-800 rounded-bl-md'
+										}`}
+									>
+										<div className='flex items-start justify-between gap-2'>
+											<p className='flex-1 leading-relaxed'>{message.dutch}</p>
+											<div className='flex items-center gap-1 flex-shrink-0 ml-2'>
+												<button
+													onClick={() =>
+														handlePlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
+													}
+													className={`p-1.5 rounded-full hover:bg-opacity-20 transition-colors ${
+														message.role === 'user'
+															? 'hover:bg-white text-white opacity-90 hover:opacity-100'
+															: 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
+													}`}
+													title='Play Dutch audio'
+												>
+													{audioPlaying === `${message.id}-dutch` ? (
+														<VolumeX className='w-3.5 h-3.5' />
+													) : (
+														<Volume2 className='w-3.5 h-3.5' />
+													)}
+												</button>
+												{message.english && (
 													<button
-														onClick={() =>
-															handlePlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
-														}
-														className={`p-1 rounded hover:bg-opacity-20 transition-colors ${
+														onClick={() => toggleTranslation(message.id)}
+														className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
 															message.role === 'user'
-																? 'hover:bg-white text-white'
-																: 'hover:bg-slate-200 text-slate-600'
+																? 'hover:bg-white hover:bg-opacity-20 text-white opacity-90 hover:opacity-100'
+																: 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
 														}`}
-														title='Play Dutch audio'
+														title='Toggle translation'
 													>
-														{audioPlaying === `${message.id}-dutch` ? (
-															<VolumeX className='w-4 h-4' />
-														) : (
-															<Volume2 className='w-4 h-4' />
-														)}
+														EN
 													</button>
-													{message.english && (
+												)}
+												{message.role === 'user' &&
+													message.corrections &&
+													message.corrections.length > 0 && (
 														<button
-															onClick={() => toggleTranslation(message.id)}
-															className={`p-1 rounded text-xs font-medium transition-colors ${
-																message.role === 'user'
-																	? 'hover:bg-white hover:bg-opacity-20 text-white'
-																	: 'hover:bg-slate-200 text-slate-600'
-															}`}
-															title='Toggle translation'
+															onClick={() => toggleCorrections(message.id)}
+															className='px-2 py-1 rounded-full text-xs font-medium transition-colors hover:bg-white hover:bg-opacity-20 text-white opacity-90 hover:opacity-100'
+															title='Toggle corrections'
 														>
-															EN
+															✓
 														</button>
 													)}
-													{message.role === 'user' &&
-														message.corrections &&
-														message.corrections.length > 0 && (
-															<button
-																onClick={() => toggleCorrections(message.id)}
-																className='p-1 rounded text-xs font-medium transition-colors hover:bg-white hover:bg-opacity-20 text-white'
-																title='Toggle corrections'
-															>
-																✓
-															</button>
-														)}
+											</div>
+										</div>
+										{message.showTranslation && message.english && (
+											<div
+												className={`mt-3 pt-2 text-sm border-t ${
+													message.role === 'user'
+														? 'border-blue-400 border-opacity-30'
+														: 'border-slate-100'
+												}`}
+											>
+												<div className='flex items-start justify-between gap-2'>
+													<p
+														className={`flex-1 leading-relaxed ${
+															message.role === 'user' ? 'text-blue-100' : 'text-slate-600'
+														}`}
+													>
+														{message.english}
+													</p>
+													{message.english && (
+														<button
+															onClick={() =>
+																handlePlayAudio(`${message.id}-english`, message.english, 'en-US')
+															}
+															className={`p-1 rounded-full transition-colors flex-shrink-0 ${
+																message.role === 'user'
+																	? 'hover:bg-white hover:bg-opacity-20 text-blue-100 hover:text-white'
+																	: 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'
+															}`}
+															title='Play English audio'
+														>
+															{audioPlaying === `${message.id}-english` ? (
+																<VolumeX className='w-3 h-3' />
+															) : (
+																<Volume2 className='w-3 h-3' />
+															)}
+														</button>
+													)}
 												</div>
 											</div>
-											{message.showTranslation && message.english && (
-												<div
-													className={`mt-2 text-sm border-t pt-2 ${
-														message.role === 'user'
-															? 'border-blue-500 text-blue-100'
-															: 'text-slate-600 border-slate-100'
-													}`}
-												>
-													<div className='flex items-start justify-between gap-2'>
-														<p className='flex-1'>{message.english}</p>
+										)}
+										{message.role === 'user' &&
+											message.showCorrections &&
+											message.corrections &&
+											message.corrections.length > 0 && (
+												<div className='mt-3 pt-2 text-sm border-t border-blue-400 border-opacity-30'>
+													<p className='font-medium mb-2 text-blue-100'>Corrections:</p>
+													{message.correctedText && (
+														<div className='mb-2 p-2 bg-blue-400 bg-opacity-20 rounded-lg'>
+															<span className='font-medium text-blue-100'>Corrected: </span>
+															<span className='text-blue-50'>{message.correctedText}</span>
+														</div>
+													)}
+													<div className='space-y-2'>
+														{message.corrections.map((correction, index) => (
+															<div key={index} className='text-xs bg-blue-400 bg-opacity-20 p-2 rounded-lg'>
+																<div className='flex items-center gap-2 mb-1'>
+																	<span className='line-through opacity-75 text-blue-200'>
+																		{correction.original}
+																	</span>
+																	<span className='text-blue-100'>→</span>
+																	<span className='font-medium text-blue-50'>{correction.corrected}</span>
+																</div>
+																{correction.explanation && (
+																	<p className='text-blue-100 mt-1 leading-relaxed'>
+																		{correction.explanation}
+																	</p>
+																)}
+															</div>
+														))}
 													</div>
 												</div>
 											)}
-											{message.role === 'user' &&
-												message.showCorrections &&
-												message.corrections &&
-												message.corrections.length > 0 && (
-													<div className='mt-2 text-sm border-t pt-2 border-blue-500 text-blue-100'>
-														<p className='font-medium mb-1'>Corrections:</p>
-														{message.correctedText && (
-															<p className='mb-2'>
-																<span className='font-medium'>Corrected: </span>
-																{message.correctedText}
-															</p>
-														)}
-														<div className='space-y-1'>
-															{message.corrections.map((correction, index) => (
-																<div key={index} className='text-xs'>
-																	<span className='line-through opacity-75'>
-																		{correction.original}
-																	</span>
-																	{' → '}
-																	<span className='font-medium'>{correction.corrected}</span>
-																	{correction.explanation && (
-																		<span className='block opacity-90 mt-1'>
-																			{correction.explanation}
-																		</span>
-																	)}
-																</div>
-															))}
-														</div>
-													</div>
-												)}
-										</div>
 									</div>
 								</div>
 							</div>
