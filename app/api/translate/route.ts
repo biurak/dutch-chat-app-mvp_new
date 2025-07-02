@@ -31,9 +31,16 @@ const A1_LEVEL_WORDS = new Set([
 ]);
 
 // Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI;
+
+// Initialize OpenAI client
+if (!process.env.OPENAI_API_KEY) {
+  console.error('Missing OPENAI_API_KEY environment variable');
+} else {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 export async function POST(request: Request) {
   try {
@@ -59,17 +66,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ translation: '' });
     }
     
+    // Check if OpenAI client is properly initialized
+    if (!openai) {
+      console.error('OpenAI client not initialized');
+      return NextResponse.json(
+        { error: 'Translation service is not available' },
+        { status: 503 }
+      );
+    }
+    
+    console.log('Translating word:', { word, context });
+    
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that translates individual Dutch words to English. " +
-                   "Only translate words that are A2 level or above (A2, B1, B2, C1, or C2). " +
-                   "For A1 level words, return an empty string. " +
-                   "Provide only the most common English translation of the word. " +
-                   "If the word is part of a common phrase, provide the translation of the entire phrase. " +
-                   "Return only the translation, or an empty string if the word is A1 level."
+          content: `You are a helpful assistant that translates individual Dutch words to English. 
+                   Only translate words that are A2 level or above (A2, B1, B2, C1, or C2). 
+                   For A1 level words, return an empty string. 
+                   Provide only the most common English translation of the word. 
+                   If the word is part of a common phrase, provide the translation of the entire phrase. 
+                   Return only the translation, or an empty string if the word is A1 level.`
         },
         {
           role: "user",
@@ -80,14 +98,31 @@ export async function POST(request: Request) {
       max_tokens: 20
     });
 
+    console.log('Translation response:', JSON.stringify(completion, null, 2));
+    
     const translation = completion.choices[0]?.message?.content?.trim() || '';
+    console.log('Translation result:', { word, translation });
     
     return NextResponse.json({ translation });
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Translation error:', error);
+    
+    const errorDetails = error instanceof Error ? {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    } : {
+      message: String(error)
+    };
+    
+    console.error('Error details:', errorDetails);
+    
     return NextResponse.json(
-      { error: 'Failed to translate word' },
+      { 
+        error: 'Failed to translate word',
+        ...(process.env.NODE_ENV === 'development' && { details: errorDetails })
+      },
       { status: 500 }
     );
   }

@@ -14,30 +14,50 @@ async function translateWord(word: string, context: string): Promise<string> {
     return translationCache.get(cacheKey) || '';
   }
 
+  console.log(`[translateWord] Translating word: "${word}" with context: "${context}"`);
+  
   try {
-    const response = await fetch('/api/translate', {
+    const apiUrl = '/api/translate';
+    const requestBody = { word, context };
+    
+    console.log(`[translateWord] Making request to ${apiUrl}`, { word, context });
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ word, context }),
+      body: JSON.stringify(requestBody),
     });
 
+    console.log(`[translateWord] Response status: ${response.status}`);
+    
     if (!response.ok) {
-      throw new Error(`Translation API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[translateWord] API Error (${response.status}):`, errorText);
+      throw new Error(`Translation API error (${response.status}): ${errorText || 'Unknown error'}`);
     }
 
     const data = await response.json();
     const translation = data.translation || '';
     
+    console.log(`[translateWord] Translation for "${word}": "${translation}"`);
+    
     // Cache the translation
     if (translation) {
       translationCache.set(cacheKey, translation);
+    } else {
+      console.log(`[translateWord] Empty translation for "${word}"`);
     }
     
     return translation;
   } catch (error) {
-    console.error('Error translating word:', error);
+    console.error('[translateWord] Error in translateWord:', error);
+    console.error('[translateWord] Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'UnknownError'
+    });
     return '';
   }
 }
