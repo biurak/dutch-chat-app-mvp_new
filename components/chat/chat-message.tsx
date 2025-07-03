@@ -38,8 +38,8 @@ export function ChatMessage({
 	onToggleCorrections,
 }: ChatMessageProps) {
 	return (
-		<div className={`mb-4 ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
-			<div className={`max-w-[95%] md:max-w-[60%] lg:max-w-[50%]`}>
+		<div className={`${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'} `}>
+			<div className={`max-w-[95%] md:max-w-[60%] lg:max-w-[50%] mb-4`}>
 				<div
 					className={`flex items-center gap-2 mb-1 ${
 						message.role === 'user' ? 'justify-end' : 'justify-start'

@@ -443,12 +443,11 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	return (
 		<>
-			<div className='flex flex-col h-screen bg-slate-50'>
-
+			<div className='flex flex-col bg-slate-50'>
 				{/* Main content area */}
-				<main className='container flex-1 pt-16 pb-32 mx-auto overflow-y-auto xl'>
+				<main className='container flex-1 mx-auto overflow-y-auto xl'>
 					{/* Messages */}
-					<div className='p-4 mb-40 space-y-4 sm:mb-24'>
+					<div className='p-4 mb-64 space-y-4 sm:mb-56'>
 						{messages.length === 0 ? (
 							<div className='flex items-center justify-center h-full'>
 								<p className='text-slate-500'>Start the conversation...</p>
