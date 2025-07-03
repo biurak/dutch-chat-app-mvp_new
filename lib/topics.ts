@@ -1,3 +1,14 @@
+/**
+ * Shared Type Definitions for Dutch Chat Application
+ * 
+ * This file contains all canonical type definitions used across the chat application.
+ * These types ensure consistency between components, hooks, and the main chat client.
+ */
+
+/**
+ * Represents a new Dutch word discovered during conversation
+ * Used for vocabulary learning and word review features
+ */
 export interface NewWord {
   dutch: string
   english: string
@@ -5,6 +16,37 @@ export interface NewWord {
   english_sentence: string
 }
 
+/**
+ * Represents a grammar correction with explanation
+ * Used in grammar checking and language learning feedback
+ */
+export interface Correction {
+	original: string
+	corrected: string
+	explanation: string
+}
+
+/**
+ * Represents a chat message between user and AI assistant
+ * Contains text content, metadata, and interactive features state
+ */
+export interface Message {
+	id: string
+	role: 'user' | 'ai'
+	dutch: string
+	english: string
+	showTranslation: boolean
+	isStreaming?: boolean
+	corrections?: Correction[]
+	correctedText?: string
+	showCorrections?: boolean
+	newWords?: NewWord[]
+}
+
+/**
+ * Represents a conversation topic with its configuration
+ * Defines the context and initial setup for Dutch practice conversations
+ */
 export interface Topic {
   slug: string
   title: string
