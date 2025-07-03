@@ -48,7 +48,7 @@ export function Navbar() {
 				{/* Logo Section */}
 				<Link
 					href='/'
-					className='flex items-center space-x-3 text-slate-800 hover:text-primary transition-colors duration-200'
+					className='flex items-center space-x-3 text-slate-800 hover:text-primary transition-colors duration-200 '
 				>
 					<MessageSquareText className='h-8 w-8 text-primary' />
 					<span className='text-xl font-bold tracking-tight'>Dutch Chat</span>
@@ -91,15 +91,7 @@ export function Navbar() {
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
-					) : (
-						<Button
-							asChild
-							variant='ghost'
-							className='text-slate-700 hover:text-primary hover:bg-slate-100/80 transition-colors duration-200'
-						>
-							<Link href='/sign-in'>Sign In</Link>
-						</Button>
-					)}
+					) : null}
 				</div>
 			</div>
 		</nav>

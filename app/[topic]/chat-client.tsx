@@ -620,7 +620,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				{/* Main content area */}
 				<main className='flex-1 overflow-y-auto pt-16 pb-32 container xl mx-auto'>
 					{/* Messages */}
-					<div className='p-4 space-y-4'>
+					<div className='p-4 space-y-4 mb-40 sm:mb-24'>
 						{messages.length === 0 ? (
 							<div className='flex items-center justify-center h-full'>
 								<p className='text-slate-500'>Start the conversation...</p>
@@ -783,7 +783,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				{/* Fixed bottom area */}
 				<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10 flex flex-col gap-4 py-4'>
 					{/* Suggestions */}
-					<div className='flex items-center justify-between container xl '>
+					<div className='flex items-center justify-between container xl flex-col sm:flex-row gap-2 '>
 						{currentSuggestions.length > 0 && (
 							<div className='bg-white px-0 py-3 border-slate-200 container mx-auto xl '>
 								<div className='w-full'>
