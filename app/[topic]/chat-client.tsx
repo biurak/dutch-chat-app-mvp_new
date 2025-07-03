@@ -13,6 +13,8 @@ import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
 import { ReviewWordsModal } from '@/components/chat/review-words-modal'
 import { Toaster } from '@/components/ui/toaster'
+import { useIsMobile } from "@/hooks/use-mobile"
+
 
 interface Suggestion {
 	dutch: string
@@ -63,6 +65,8 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	const router = useRouter()
 	const messagesEndRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
+
+	const isMobile = useIsMobile()
 
 	const [isLoading, setIsLoading] = useState(true)
 	const [isLoadingAi, setIsLoadingAi] = useState(false)
@@ -597,8 +601,8 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	if (error) {
 		return (
-			<div className='flex flex-col items-center justify-center h-screen bg-slate-50 p-4'>
-				<p className='text-red-600 mb-4'>{error}</p>
+			<div className='flex flex-col items-center justify-center h-screen p-4 bg-slate-50'>
+				<p className='mb-4 text-red-600'>{error}</p>
 				<Button onClick={() => router.back()}>
 					<ArrowLeft className='w-4 h-4 mr-2' /> Terug naar overzicht
 				</Button>
@@ -610,7 +614,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 		<>
 			<div className='flex flex-col h-screen bg-slate-50'>
 				{/* Header */}
-				{/* <header className='bg-white shadow-sm p-4 flex items-center sticky top-0 z-10 h-16'>
+				{/* <header className='sticky top-0 z-10 flex items-center h-16 p-4 bg-white shadow-sm'>
 					<Button variant='ghost' size='icon' onClick={() => router.back()} className='mr-2'>
 						<ArrowLeft className='w-5 h-5' />
 					</Button>
@@ -618,9 +622,9 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				</header> */}
 
 				{/* Main content area */}
-				<main className='flex-1 overflow-y-auto pt-16 pb-32 container xl mx-auto'>
+				<main className='container flex-1 pt-16 pb-32 mx-auto overflow-y-auto xl'>
 					{/* Messages */}
-					<div className='p-4 space-y-4 mb-40 sm:mb-24'>
+					<div className='p-4 mb-40 space-y-4 sm:mb-24'>
 						{messages.length === 0 ? (
 							<div className='flex items-center justify-center h-full'>
 								<p className='text-slate-500'>Start the conversation...</p>
@@ -633,26 +637,26 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 										message.role === 'user' ? 'flex justify-end' : 'flex justify-start'
 									}`}
 								>
-									<div className={`max-w-[75%] md:max-w-[60%] lg:max-w-[50%]`}>
+									<div className={`max-w-[95%] md:max-w-[60%] lg:max-w-[50%]`}>
 										<div
 											className={`flex items-center gap-2 mb-1 ${
 												message.role === 'user' ? 'justify-end' : 'justify-start'
 											}`}
 										>
-											<span className='text-xs text-slate-500 font-medium'>
+											<span className='text-xs font-medium text-slate-500'>
 												{message.role === 'user' ? 'You' : 'Dutch Assistant'}
 											</span>
 										</div>
 										<div
-											className={`relative px-4 py-3 rounded-2xl shadow-sm ${
+											className={`relative px-2 py-3 rounded-2xl shadow-sm ${
 												message.role === 'user'
 													? 'bg-blue-500 text-white rounded-br-md'
 													: 'bg-white border border-slate-100 text-slate-800 rounded-bl-md'
 											}`}
 										>
-											<div className='flex items-start justify-between gap-2'>
+											<div className='flex flex-col items-start justify-between gap-2 align-end '>
 												<p className='flex-1 leading-relaxed'>{message.dutch}</p>
-												<div className='flex items-center gap-1 flex-shrink-0 ml-2'>
+												<div className='flex items-center justify-end w-full gap-1 ml-2'>
 													<button
 														onClick={() =>
 															handlePlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
@@ -661,7 +665,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 															message.role === 'user'
 																? 'hover:bg-white text-white opacity-90 hover:opacity-100'
 																: 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
-														}`}
+														} `}
 														title='Play Dutch audio'
 													>
 														{audioPlaying === `${message.id}-dutch` ? (
@@ -688,7 +692,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 														message.corrections.length > 0 && (
 															<button
 																onClick={() => toggleCorrections(message.id)}
-																className='px-2 py-1 rounded-full text-xs font-medium transition-colors hover:bg-white hover:bg-opacity-20 text-white opacity-90 hover:opacity-100'
+																className='px-2 py-1 text-xs font-medium text-white transition-colors rounded-full hover:bg-white hover:bg-opacity-20 opacity-90 hover:opacity-100'
 																title='Toggle corrections'
 															>
 																✓
@@ -738,10 +742,10 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 												message.showCorrections &&
 												message.corrections &&
 												message.corrections.length > 0 && (
-													<div className='mt-3 pt-2 text-sm border-t border-blue-400 border-opacity-30'>
-														<p className='font-medium mb-2 text-blue-100'>Corrections:</p>
+													<div className='pt-2 mt-3 text-sm border-t border-blue-400 border-opacity-30'>
+														<p className='mb-2 font-medium text-blue-100'>Corrections:</p>
 														{message.correctedText && (
-															<div className='mb-2 p-2 bg-blue-400 bg-opacity-20 rounded-lg'>
+															<div className='p-2 mb-2 bg-blue-400 rounded-lg bg-opacity-20'>
 																<span className='font-medium text-blue-100'>Corrected: </span>
 																<span className='text-blue-50'>{message.correctedText}</span>
 															</div>
@@ -750,10 +754,10 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 															{message.corrections.map((correction, index) => (
 																<div
 																	key={index}
-																	className='text-xs bg-blue-400 bg-opacity-20 p-2 rounded-lg'
+																	className='p-2 text-xs bg-blue-400 rounded-lg bg-opacity-20'
 																>
 																	<div className='flex items-center gap-2 mb-1'>
-																		<span className='line-through opacity-75 text-blue-200'>
+																		<span className='text-blue-200 line-through opacity-75'>
 																			{correction.original}
 																		</span>
 																		<span className='text-blue-100'>→</span>
@@ -762,7 +766,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 																		</span>
 																	</div>
 																	{correction.explanation && (
-																		<p className='text-blue-100 mt-1 leading-relaxed'>
+																		<p className='mt-1 leading-relaxed text-blue-100'>
 																			{correction.explanation}
 																		</p>
 																	)}
@@ -781,11 +785,11 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				</main>
 
 				{/* Fixed bottom area */}
-				<div className='fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10 flex flex-col gap-4 py-4'>
+				<div className='fixed bottom-0 left-0 right-0 z-10 flex flex-col gap-4 py-4 bg-white border-t border-slate-200'>
 					{/* Suggestions */}
-					<div className='flex items-center justify-between container xl flex-col sm:flex-row gap-2 '>
+					<div className='container flex flex-col items-center justify-between gap-2 xl sm:flex-row '>
 						{currentSuggestions.length > 0 && (
-							<div className='bg-white px-0 py-3 border-slate-200 container mx-auto xl '>
+							<div className='container px-0 py-3 mx-auto bg-white border-slate-200 xl '>
 								<div className='w-full'>
 									<div className='flex flex-wrap gap-2 px-0'>
 										{currentSuggestions.map((suggestion, index) => (
@@ -804,43 +808,32 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 								</div>
 							</div>
 						)}
-
-						<button
-							onClick={(e) => {
-								e.preventDefault()
-								setReviewModalOpen(true)
-							}}
-							className='w-full py-2 px-4 border border-blue-300 bg-white text-blue-500 hover:bg-blue-50 font-normal text-sm rounded transition-colors duration-200 flex items-center justify-center gap-2 max-w-xs mx-auto'
-						>
-							<BookOpen className='h-4 w-4' />
-							<span>End the chat and review new words</span>
-						</button>
 					</div>
 
 					{/* Input area */}
-					<div className='container mx-auto xl'>
+					<div className='container flex flex-col gap-2 mx-auto xl'>
 						<form onSubmit={handleSubmit} className='flex gap-2'>
-							<div className='flex-1 relative'>
+							<div className='relative flex-1'>
 								<input
 									ref={inputRef}
 									type='text'
 									value={inputValue}
 									onChange={(e) => setInputValue(e.target.value)}
-									placeholder='Type your message in Dutch...'
-									className='w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none'
+									placeholder={voiceRecording.isRecording && isMobile ? '' : 'Type your message in Dutch...'}
+									className='w-full px-4 py-2 border rounded-lg outline-none border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 									disabled={isLoadingAi}
 								/>
 								{voiceRecording.isRecording && (
-									<div className='absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1'>
+									<div className='absolute flex items-center gap-1 transform -translate-y-1/2 right-3 top-1/2'>
 										<div className='w-2 h-2 bg-red-500 rounded-full animate-pulse'></div>
-										<span className='text-xs text-red-500 font-medium'>Recording...</span>
+										<span className='text-xs font-medium text-red-500'>Recording...</span>
 									</div>
 								)}
 							</div>
 							<Button
 								type='submit'
 								disabled={!inputValue.trim() || isLoadingAi}
-								className='bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50'
+								className='text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50'
 								size='icon'
 							>
 								<Send className='w-4 h-4' />
@@ -859,6 +852,16 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 								<Mic className={`w-4 h-4 ${voiceRecording.isRecording ? 'text-white' : ''}`} />
 							</Button>
 						</form>
+						<button
+							onClick={(e) => {
+								e.preventDefault()
+								setReviewModalOpen(true)
+							}}
+							className='flex items-center justify-center w-full gap-2 px-2 py-2 text-sm font-normal text-blue-500 transition-colors duration-200 bg-white border border-blue-300 rounded hover:bg-blue-50 '
+						>
+							<BookOpen className='w-6 h-4' />
+							<span className='text-xs sm:text-base'>End the chat and review new words</span>
+						</button>
 					</div>
 
 					{/* Review Words Button */}
