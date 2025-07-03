@@ -1,9 +1,9 @@
 /**
  * Chat Message Component
- * 
+ *
  * A reusable UI component that renders individual chat messages in the Dutch chat application.
  * Supports both user and AI messages with rich interactive features.
- * 
+ *
  * Key Features:
  * - Displays Dutch text with optional English translations
  * - Audio playback for both Dutch and English text (TTS)
@@ -11,7 +11,7 @@
  * - Translation toggle functionality
  * - Responsive design with different styling for user vs AI messages
  * - Visual indicators for audio playback state
- * 
+ *
  * @param message - The message object containing text, role, and metadata
  * @param audioPlaying - Currently playing audio message ID for state management
  * @param onPlayAudio - Callback to handle text-to-speech playback
@@ -30,19 +30,15 @@ interface ChatMessageProps {
 	onToggleCorrections: (messageId: string) => void
 }
 
-export function ChatMessage({ 
-	message, 
-	audioPlaying, 
-	onPlayAudio, 
-	onToggleTranslation, 
-	onToggleCorrections 
+export function ChatMessage({
+	message,
+	audioPlaying,
+	onPlayAudio,
+	onToggleTranslation,
+	onToggleCorrections,
 }: ChatMessageProps) {
 	return (
-		<div
-			className={`mb-4 ${
-				message.role === 'user' ? 'flex justify-end' : 'flex justify-start'
-			}`}
-		>
+		<div className={`mb-4 ${message.role === 'user' ? 'flex justify-end' : 'flex justify-start'}`}>
 			<div className={`max-w-[95%] md:max-w-[60%] lg:max-w-[50%]`}>
 				<div
 					className={`flex items-center gap-2 mb-1 ${
@@ -62,11 +58,9 @@ export function ChatMessage({
 				>
 					<div className='flex flex-col items-start justify-between gap-2 align-end '>
 						<p className='flex-1 leading-relaxed'>{message.dutch}</p>
-						<div className='flex items-center justify-end w-full gap-1 ml-2'>
+						<div className='flex items-center justify-end w-full gap-1 px-2 ml-2'>
 							<button
-								onClick={() =>
-									onPlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')
-								}
+								onClick={() => onPlayAudio(`${message.id}-dutch`, message.dutch, 'nl-NL')}
 								className={`p-1.5 rounded-full hover:bg-opacity-20 transition-colors ${
 									message.role === 'user'
 										? 'hover:bg-white text-white opacity-90 hover:opacity-100'
@@ -93,25 +87,21 @@ export function ChatMessage({
 									EN
 								</button>
 							)}
-							{message.role === 'user' &&
-								message.corrections &&
-								message.corrections.length > 0 && (
-									<button
-										onClick={() => onToggleCorrections(message.id)}
-										className='px-2 py-1 text-xs font-medium text-white transition-colors rounded-full hover:bg-white hover:bg-opacity-20 opacity-90 hover:opacity-100'
-										title='Toggle corrections'
-									>
-										✓
-									</button>
-								)}
+							{message.role === 'user' && message.corrections && message.corrections.length > 0 && (
+								<button
+									onClick={() => onToggleCorrections(message.id)}
+									className='px-2 py-1 text-xs font-medium text-white transition-colors rounded-full hover:bg-white hover:bg-opacity-20 opacity-90 hover:opacity-100'
+									title='Toggle corrections'
+								>
+									✓
+								</button>
+							)}
 						</div>
 					</div>
 					{message.showTranslation && message.english && (
 						<div
 							className={`mt-3 pt-2 text-sm border-t ${
-								message.role === 'user'
-									? 'border-blue-400 border-opacity-30'
-									: 'border-slate-100'
+								message.role === 'user' ? 'border-blue-400 border-opacity-30' : 'border-slate-100'
 							}`}
 						>
 							<div className='flex items-start justify-between gap-2'>
@@ -124,9 +114,7 @@ export function ChatMessage({
 								</p>
 								{message.english && (
 									<button
-										onClick={() =>
-											onPlayAudio(`${message.id}-english`, message.english, 'en-US')
-										}
+										onClick={() => onPlayAudio(`${message.id}-english`, message.english, 'en-US')}
 										className={`p-1 rounded-full transition-colors flex-shrink-0 ${
 											message.role === 'user'
 												? 'hover:bg-white hover:bg-opacity-20 text-blue-100 hover:text-white'
@@ -158,18 +146,13 @@ export function ChatMessage({
 								)}
 								<div className='space-y-2'>
 									{message.corrections.map((correction, index) => (
-										<div
-											key={index}
-											className='p-2 text-xs bg-blue-400 rounded-lg bg-opacity-20'
-										>
+										<div key={index} className='p-2 text-xs bg-blue-400 rounded-lg bg-opacity-20'>
 											<div className='flex items-center gap-2 mb-1'>
 												<span className='text-blue-200 line-through opacity-75'>
 													{correction.original}
 												</span>
 												<span className='text-blue-100'>→</span>
-												<span className='font-medium text-blue-50'>
-													{correction.corrected}
-												</span>
+												<span className='font-medium text-blue-50'>{correction.corrected}</span>
 											</div>
 											{correction.explanation && (
 												<p className='mt-1 leading-relaxed text-blue-100'>
