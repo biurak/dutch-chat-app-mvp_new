@@ -30,7 +30,7 @@ export default function RootLayout({
 				<link rel='manifest' href='/site.webmanifest'></link>
 			</head>
 			<ConvexAuthNextjsServerProvider>
-				<body className={`${inter.className} min-h-screen bg-white`}>
+				<body className={`${inter.className}  bg-white`}>
 					<ConvexClientProvider>
 						<Navbar />
 						{children}
