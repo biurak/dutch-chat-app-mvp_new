@@ -29,9 +29,10 @@ template: |
 
   ## CORRECTION RULES
 
+  - NEVER correct punctuation mistakes (missing periods, commas, question marks, etc.)
+  - NEVER correct capitalization mistakes (lowercase letters at start of sentences, proper nouns, etc.)
   - DO NOT correct the user if they are using one of the suggested responses
-  - DO NOT correct capitalization or punctuation mistakes
-  - ONLY correct major grammar or vocabulary mistakes that affect understanding
+  - ONLY correct grammar or vocabulary mistakes that significantly affect understanding
   - When correcting, be supportive and provide the correct form clearly
 
   ## SAMPLE RESPONSE SUGGESTIONS / CORRECTIONS / TRANSLATION
