@@ -1,17 +1,17 @@
 /**
  * Dutch Chat Client Component
- * 
+ *
  * Main chat interface for practicing Dutch conversation with AI assistance.
  * This component has been refactored using a modular architecture with custom hooks and UI components.
- * 
+ *
  * REFACTORED ARCHITECTURE:
  * - useChatMessages: Manages all message state and operations
- * - useChatApi: Handles backend API communication 
+ * - useChatApi: Handles backend API communication
  * - useWordManagement: Extracts and organizes vocabulary learning
  * - ChatMessage: Renders individual chat messages with interactions
  * - ChatSuggestions: Displays conversation suggestion buttons
  * - ChatInputForm: Handles user input, voice recording, and actions
- * 
+ *
  * Key Features:
  * - Real-time chat with Dutch AI assistant
  * - Grammar checking and corrections
@@ -21,7 +21,7 @@
  * - Translation toggles (Dutch ↔ English)
  * - Topic-based conversation contexts
  * - Performance monitoring and analytics
- * 
+ *
  * @param topicSlug - URL slug identifying the conversation topic
  */
 
@@ -31,7 +31,13 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
-import { getTopicBySlug, type Topic, type NewWord, type Message, type Correction } from '@/lib/topics'
+import {
+	getTopicBySlug,
+	type Topic,
+	type NewWord,
+	type Message,
+	type Correction,
+} from '@/lib/topics'
 import { usePerformanceMonitoring } from '@/lib/performance-monitor'
 import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
@@ -43,8 +49,7 @@ import { ChatSuggestions } from '@/components/chat/chat-suggestions'
 import { ChatInputForm } from '@/components/chat/chat-input-form'
 import { ReviewWordsModal } from '@/components/chat/review-words-modal'
 import { Toaster } from '@/components/ui/toaster'
-import { useIsMobile } from "@/hooks/use-mobile"
-
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface Suggestion {
 	dutch: string
@@ -97,14 +102,14 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	})
 
 	// Message management hook - handles all chat message state and operations
-	const { 
-		messages, 
-		toggleTranslation, 
-		toggleCorrections, 
-		addInitialMessage, 
-		addUserMessage, 
-		addAiStreamingMessage, 
-		updateMessage 
+	const {
+		messages,
+		toggleTranslation,
+		toggleCorrections,
+		addInitialMessage,
+		addUserMessage,
+		addAiStreamingMessage,
+		updateMessage,
 	} = useChatMessages()
 
 	// Chat API hook - manages backend communication for chat and grammar checking
@@ -211,7 +216,10 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 			setIsLoadingAi(true)
 
 			// STEP 2: Start grammar checking in background (non-blocking)
-			checkGrammar(message, messages.map((m) => m.dutch))
+			checkGrammar(
+				message,
+				messages.map((m) => m.dutch)
+			)
 				.then((grammarCheck) => {
 					console.log('[handleUserMessage] Grammar check result:', grammarCheck)
 
@@ -329,7 +337,19 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				tracker.finish()
 			}
 		},
-		[currentTopic, messages, topicSlug, checkGrammar, prepareChatHistory, sendMessage, processWordsFromResponse, startMessage, addUserMessage, addAiStreamingMessage, updateMessage]
+		[
+			currentTopic,
+			messages,
+			topicSlug,
+			checkGrammar,
+			prepareChatHistory,
+			sendMessage,
+			processWordsFromResponse,
+			startMessage,
+			addUserMessage,
+			addAiStreamingMessage,
+			updateMessage,
+		]
 	)
 
 	// Handle clicking on a suggestion - callback for ChatSuggestions component
@@ -394,7 +414,10 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				setCurrentTopic(extendedTopic)
 
 				// Set initial welcome message
-				addInitialMessage(extendedTopic.initialAiMessage.dutch, extendedTopic.initialAiMessage.english)
+				addInitialMessage(
+					extendedTopic.initialAiMessage.dutch,
+					extendedTopic.initialAiMessage.english
+				)
 
 				// Set initial suggestions
 				if (extendedTopic.initialSuggestions?.length) {
@@ -425,7 +448,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 	if (isLoading) {
 		return (
 			<div className='flex items-center justify-center h-screen bg-slate-50'>
-				<p className='text-slate-600'>Laden...</p>
+				<p className='text-slate-600'>loading...</p>
 			</div>
 		)
 	}
@@ -443,7 +466,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 
 	return (
 		<>
-			<div className='flex flex-col bg-slate-50'>
+			<div className='flex flex-col bg-slate-50 h-[calc(100vh-250px)]'>
 				{/* Main content area */}
 				<main className='container flex-1 mx-auto overflow-y-auto xl'>
 					{/* Messages */}
@@ -472,7 +495,7 @@ export default function ChatClient({ topicSlug }: ChatClientProps) {
 				{/* Fixed bottom area */}
 				<div className='fixed bottom-0 left-0 right-0 z-10 flex flex-col gap-4 py-4 bg-white border-t border-slate-200'>
 					{/* Suggestions - using modular ChatSuggestions component */}
-					<ChatSuggestions 
+					<ChatSuggestions
 						suggestions={currentSuggestions}
 						onSuggestionClick={handleSuggestionClick}
 					/>
