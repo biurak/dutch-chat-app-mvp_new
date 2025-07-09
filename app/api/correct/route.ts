@@ -227,7 +227,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     console.log(`[correct/route] Using model: ${model}`);
     
     let response;

@@ -51,7 +51,7 @@ The chat API endpoint has been significantly improved with better error handling
 
 ### 8. **Environment Configuration**
 - OpenAI model name configurable via `OPENAI_MODEL` environment variable
-- Fallback to `gpt-4o-2024-08-06` if environment variable not set
+- Fallback to `gpt-4o-mini` if environment variable not set
 - Centralized model configuration across all API endpoints
 - Easy model switching without code changes
 

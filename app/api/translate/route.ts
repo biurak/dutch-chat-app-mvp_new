@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     console.log(`[${requestId}] Translating word: "${word}" with context: "${context}"`);
     
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-3.5-turbo",
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [
         {
           role: "system",

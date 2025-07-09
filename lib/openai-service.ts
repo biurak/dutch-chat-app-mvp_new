@@ -137,7 +137,7 @@ export async function* generateAIResponseStream(
 		let stream;
   try {
     stream = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         systemMessage,
         ...messages.map((msg) => ({
@@ -309,7 +309,7 @@ export async function generateAIResponse(
 		let response;
   try {
     response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         systemMessage,
         ...messages.map((msg) => ({
