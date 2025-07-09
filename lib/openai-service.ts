@@ -261,6 +261,14 @@ export async function generateAIResponse(
         ${systemPrompt}
         
         CRITICAL INSTRUCTIONS:
+
+				CORRECTION RULES:
+				- DO NOT correct the user if they are using one of the suggested responses
+				- DO NOT correct capitalization or punctuation mistakes
+				- ONLY correct grammar or vocabulary mistakes that affect understanding
+				- When correcting, be supportive and provide the correct form clearly
+				- Also correct mistakes that affect meaning or politeness
+
         1. YOU MUST respond with a VALID JSON object that follows this EXACT structure:
            {
              "ai_reply": "Your Dutch response here",
