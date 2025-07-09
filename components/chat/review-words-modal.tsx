@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { X, Volume2 } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type ReviewMode = 'select' | 'preview'
 
@@ -39,7 +40,7 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
   const [isLoading, setIsLoading] = useState(false)
   const [showImportHelp, setShowImportHelp] = useState(false)
   const { toast } = useToast()
-
+  const isMobile = useIsMobile()
   useEffect(() => {
     if (isOpen && words) {
       setIsLoading(true);
@@ -291,7 +292,7 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
               <Button variant="outline" onClick={() => setReviewMode('select')}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <Button variant="outline" onClick={handleCopyToQuizlet}>
                   <Clipboard className="mr-2 h-4 w-4" /> Copy for Quizlet
                 </Button>
@@ -300,7 +301,8 @@ export function ReviewWordsModal({ isOpen, onClose, words = [] }: ReviewWordsMod
                   className="text-xs text-muted-foreground hover:text-foreground h-auto p-0"
                   onClick={() => setShowImportHelp(true)}
                 >
-                  <HelpCircle className="inline-block mr-1 h-3 w-3" /> How to import
+                  <HelpCircle className="inline-block mr-1 h-3  w-3" />
+                  {!isMobile ? "How to import to?"  : ""}
                 </Button>
                 
                 <Dialog open={showImportHelp} onOpenChange={setShowImportHelp}>
