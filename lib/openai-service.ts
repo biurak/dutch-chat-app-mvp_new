@@ -271,6 +271,7 @@ export async function generateAIResponse(
 				CORRECTION RULES - BE CONSISTENT WITH GRAMMAR SERVICE:
 				- DO NOT correct the user if they are using one of the suggested responses
 				- DO NOT correct missing punctuation marks (?,.,!,;:) - NEVER correct these
+				- DO NOT correct missing question marks (?) at end of questions - NEVER correct these
 				- DO NOT correct missing capitalization at sentence start - IGNORE these
 				- DO NOT correct capitalization of names/places unless clearly wrong proper nouns
 				- DO NOT correct spacing or formatting issues - IGNORE these
@@ -280,6 +281,8 @@ export async function generateAIResponse(
 				EXAMPLES OF WHAT NOT TO CORRECT:
 				✗ "hallo" → "Hallo." (missing period/capitalization)
 				✗ "waar is de winkel" → "Waar is de winkel?" (missing question mark/capitalization)
+				✗ "hoe gaat het" → "Hoe gaat het?" (missing question mark)
+				✗ "waar kom je vandaan" → "Waar kom je vandaan?" (missing question mark)
 				✗ "ja dat is goed" → "Ja, dat is goed." (missing comma/period/capitalization)
 				✗ "amsterdam" → "Amsterdam"  
 				✗ "ik ben sarah" → "Ik ben Sarah" (capitalization)
@@ -602,6 +605,7 @@ export async function checkGrammar(
 
           CORRECTION RULES - WHAT NOT TO CORRECT:
           ✗ Missing punctuation marks (.,!?;:) - NEVER correct these
+          ✗ Missing question marks (?) at end of questions - NEVER correct these
           ✗ Missing capitalization at sentence start - IGNORE these
           ✗ Capitalization of names/places - ONLY correct if it's a proper noun and clearly wrong
           ✗ Extra or missing spaces - IGNORE formatting issues
@@ -612,6 +616,8 @@ export async function checkGrammar(
           EXAMPLES OF WHAT NOT TO CORRECT:
           ✗ "hallo" → "Hallo." (missing capitalization/punctuation)
           ✗ "waar is de winkel" → "Waar is de winkel?" (missing question mark/capitalization)
+          ✗ "hoe gaat het" → "Hoe gaat het?" (missing question mark)
+          ✗ "waar kom je vandaan" → "Waar kom je vandaan?" (missing question mark)
           ✗ "ja dat is goed" → "Ja, dat is goed." (missing comma/punctuation/capitalization)
           ✗ "ik  woon  hier" → "ik woon hier" (extra spaces)
           ✗ "amsterdam" → "Amsterdam" (only correct if it's clearly referring to the city)
@@ -648,7 +654,24 @@ export async function checkGrammar(
                   
           Please analyze this Dutch text: "${text}"
 
-          Only provide corrections for actual errors, not for style or personal preference.`
+          Only provide corrections for actual errors, not for style or personal preference.
+          CORRECTION RULES - WHAT TO CORRECT:
+          ✓ Spelling mistakes (misspelled words)
+          ✓ Grammar errors (wrong verb conjugation, incorrect word order, wrong articles)
+          ✓ Wrong vocabulary usage (incorrect word choice that changes meaning)
+          ✓ Inappropriate content for the given context
+
+          CORRECTION RULES - WHAT NOT TO CORRECT:
+          ✗ Missing punctuation marks (.,!?;:) - NEVER correct these
+          ✗ Missing question marks (?) at end of questions - NEVER correct these
+          ✗ Missing capitalization at sentence start - IGNORE these
+          ✗ Capitalization of names/places - ONLY correct if it's a proper noun and clearly wrong
+          ✗ Extra or missing spaces - IGNORE formatting issues
+          ✗ Style preferences when meaning is clear
+          ✗ Regional variations or informal speech patterns
+          ✗ Word order that is understandable even if not perfect
+          
+          `
         }
       ],
       response_format: { type: 'json_object' },
@@ -693,9 +716,27 @@ export async function checkGrammar(
         return false;
       }
       
+      // Skip if the only difference is adding a question mark
+      if (orig + '?' === corr || orig + ' ?' === corr) {
+        return false;
+      }
+      
+      // Skip if the only difference is removing a question mark
+      if (orig === corr + '?' || orig === corr + ' ?') {
+        return false;
+      }
+      
       // Skip if it's just a case change
       if (orig.toLowerCase() === corr.toLowerCase() && 
           !(orig[0] === orig[0].toUpperCase() && corr[0] === corr[0].toUpperCase())) {
+        return false;
+      }
+      
+      // Skip if the only difference is capitalization + question mark
+      const origLower = orig.toLowerCase();
+      const corrLower = corr.toLowerCase();
+      if (origLower === corrLower.replace(/\?$/, '') || 
+          origLower.replace(/\?$/, '') === corrLower) {
         return false;
       }
       
