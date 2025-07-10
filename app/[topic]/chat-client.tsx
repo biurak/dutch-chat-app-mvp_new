@@ -39,7 +39,7 @@ import {
 	type Correction,
 } from '@/lib/topics'
 import { usePerformanceMonitoring } from '@/lib/performance-monitor'
-import { useVoiceRecording } from '@/hooks/use-voice-recording-fixed'
+import { useVoiceRecording } from '@/hooks/use-voice-recording'
 import { useTextToSpeech } from '@/hooks/use-text-to-speech'
 import { useChatMessages } from '@/hooks/use-chat-messages'
 import { useChatApi } from '@/hooks/use-chat-api'
