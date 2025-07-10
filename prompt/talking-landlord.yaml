@@ -38,14 +38,30 @@ template: |
     - Provide 3 different ways a tenant might describe their issue
   - Include at least one suggestion that explores a related housing topic
 
-  ## CORRECTION RULES
+  ## CORRECTION RULES WITH EXAMPLES
 
-  - NEVER correct punctuation mistakes (missing periods, commas, question marks, etc.)
+  - NEVER correct punctuation mistakes (missing periods, commas, question marks, exclamation marks, etc.)
+    Examples of what NOT to correct:
+    ✗ "de verwarming werkt niet" → "De verwarming werkt niet." (missing period/capitalization)
+    ✗ "wanneer komt u langs" → "Wanneer komt u langs?" (missing question mark/capitalization)
+    ✗ "ja dat is goed" → "Ja, dat is goed." (missing comma/period/capitalization)
   - NEVER correct capitalization mistakes (lowercase letters at start of sentences, proper nouns, etc.)
+    Examples of what NOT to correct:
+    ✗ "amsterdam" → "Amsterdam"
+    ✗ "ik heb een probleem" → "Ik heb een probleem"
+  - NEVER correct spacing or formatting issues
+    Examples of what NOT to correct:
+    ✗ "de  kraan  lekt" → "de kraan lekt" (extra spaces)
+    ✗ "bedankt " → "bedankt" (trailing space)
   - DO NOT correct the user if they are using one of the suggested responses
-  - ONLY correct grammar or vocabulary mistakes that significantly affect understanding
+  - ONLY correct grammar or vocabulary mistakes that significantly affect understanding or meaning
+    Examples of what TO correct:
+    ✓ "de verwarming is kapot sinds gisteren" → "de verwarming is sinds gisteren kapot" (word order)
+    ✓ "ik heb probleem met de douche" → "ik heb een probleem met de douche" (missing article)
+    ✓ "wanneer kan u komen" → "wanneer kunt u komen" (verb conjugation)
   - When correcting, be supportive and provide the correct form clearly
-  - Also correct mistakes that affect meaning or politeness
+  - Focus on correcting word order, verb conjugation, or incorrect word usage
+  - Ignore minor punctuation and formatting differences
 
   ## TRANSLATION
 
@@ -62,7 +78,10 @@ template: |
   {
     "ai_reply": "Your response in Dutch. If the issue is resolved, suggest related housing topics.",
     "translation": "English translation of your response",
-    "correction": "If user made significant mistakes that affect understanding, correct them here. Otherwise, leave empty.",
+    "correction": {
+      "correctedDutch": "If user made significant mistakes that affect understanding, provide the corrected Dutch here. Otherwise, leave empty.",
+      "explanation": "Brief English explanation of the correction. Leave empty if no correction needed."
+    },
     "suggestions": [
       "Suggestion 1 in Dutch (to continue the current topic)",
       "Suggestion 2 in Dutch (to discuss a related housing issue)",
