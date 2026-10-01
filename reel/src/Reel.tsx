@@ -121,20 +121,27 @@ export const Reel: React.FC = () => {
     t += dur;
     return {from, durationInFrames: s(dur)};
   };
-  const vid = (src: string, rate = 1, from = 0, volume = 0) => (
-    <OffthreadVideo src={staticFile(`footage/${src}`)} startFrom={s(from)} playbackRate={rate} volume={volume} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+  // Each clip keeps its own original sound, with short fades so cuts don't click.
+  const vid = (src: string, durationInFrames: number, rate = 1, from = 0, vol = 0.9) => (
+    <OffthreadVideo
+      src={staticFile(`footage/${src}`)}
+      startFrom={s(from)}
+      playbackRate={rate}
+      volume={(f) => interpolate(f, [0, 5, durationInFrames - 5, durationInFrames], [0, vol, vol, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'})}
+      style={{width: '100%', height: '100%', objectFit: 'cover'}}
+    />
   );
   const o = at(HOOK), a = at(INGREDIENTS), b = at(INSPO);
   return (
     <AbsoluteFill style={{background: '#000'}}>
-      <Sequence {...o}>{vid('plate.mp4', 1, 5, 0)}<Hook /><Watermark /></Sequence>
-      <Sequence {...a}>{vid('ingredients.mp4', 1, 0, 0)}<Ingredients /><Watermark /></Sequence>
+      <Sequence {...o}>{vid('plate.mp4', o.durationInFrames, 1, 5)}<Hook /><Watermark /></Sequence>
+      <Sequence {...a}>{vid('ingredients.mp4', a.durationInFrames, 1, 0)}<Ingredients /><Watermark /></Sequence>
       <Sequence {...b}><Inspiration /></Sequence>
       {COOK.map((clip, i) => {
         const seq = at(clipLen(clip));
         return (
           <Sequence key={clip.src} {...seq}>
-            {vid(clip.src, clip.rate, clip.from ?? 0, clip.rate <= 2 ? 0.3 : 0)}
+            {vid(clip.src, seq.durationInFrames, clip.rate, clip.from ?? 0)}
             {clip.text ? <Step n={i + 1} text={clip.text} sub={clip.sub} noNum={clip.noNum} /> : null}
             <Watermark />
           </Sequence>
