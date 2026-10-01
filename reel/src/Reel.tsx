@@ -6,9 +6,9 @@ export const FPS = 30;
 const s = (sec: number) => Math.round(sec * FPS);
 
 // ---- Timeline (seconds) ----
-const HOOK = 3.4; // hook text over the ingredients shot
-const INGREDIENTS = 5.0; // ingredients clip (trimmed)
-const INSPO = 7.0; // inspiration + original macros card
+const HOOK = 3.6; // finished dish + hook text
+const INGREDIENTS = 4.2; // ingredients clip (trimmed)
+const INSPO = 6.4; // inspiration photo, full screen
 const END = 3.5; // end card
 
 type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string};
@@ -30,7 +30,7 @@ const COOK: Clip[] = [
 ];
 const clipLen = (c: Clip) => c.use / c.rate;
 const COOK_TOTAL = COOK.reduce((n, c) => n + s(clipLen(c)), 0);
-export const TOTAL_FRAMES = s(INGREDIENTS) + s(INSPO) + COOK_TOTAL + s(END);
+export const TOTAL_FRAMES = s(HOOK) + s(INGREDIENTS) + s(INSPO) + COOK_TOTAL + s(END);
 
 const Pop: React.FC<{children: React.ReactNode; delay?: number; style?: React.CSSProperties}> = ({children, delay = 0, style}) => {
   const frame = useCurrentFrame();
@@ -58,48 +58,34 @@ const ingredientList = ['Chicken', 'Courgette', 'Sweet potato', 'Parmesan', 'Oli
 const Ingredients: React.FC = () => (
   <AbsoluteFill style={{justifyContent: 'flex-end', alignItems: 'flex-start', padding: `0 ${SAFE.side}px ${SAFE.bottom}px`, gap: 14}}>
     {ingredientList.map((t, i) => (
-      <Sequence key={t} from={s(HOOK) + i * 5} layout="none">
+      <Sequence key={t} from={4 + i * 5} layout="none">
         <Pop style={{transformOrigin: 'left center'}}><Pill size={50}>{t}</Pill></Pop>
       </Sequence>
     ))}
-    <Sequence from={s(HOOK) + 5 * 5} layout="none">
+    <Sequence from={4 + 5 * 5} layout="none">
       <Pop style={{transformOrigin: 'left center'}}><Pill size={44} bg={theme.accent} color="#fff">+ salt, pepper, 7% cooking cream</Pill></Pop>
     </Sequence>
   </AbsoluteFill>
 );
 
-const Chip: React.FC<{value: string; label: string}> = ({value, label}) => (
-  <div style={{background: '#fff', borderRadius: 24, padding: '14px 26px', textAlign: 'center', fontFamily: theme.font, boxShadow: '0 6px 18px rgba(0,0,0,.15)'}}>
-    <div style={{fontWeight: 800, fontSize: 46, color: theme.ink}}>{value}</div>
-    <div style={{fontWeight: 600, fontSize: 26, color: '#7a6f66'}}>{label}</div>
-  </div>
-);
-
 const Inspiration: React.FC = () => {
   const frame = useCurrentFrame();
-  const slide = interpolate(frame, [0, 10], [60, 0], {extrapolateRight: 'clamp'});
+  const {durationInFrames} = useVideoConfig();
+  const zoom = interpolate(frame, [0, durationInFrames], [1.0, 1.25]);
+  const panY = interpolate(frame, [0, durationInFrames], [-20, 40]);
+  const line = (txt: string, at: number, bg = 'rgba(31,26,23,.9)') => (
+    <Sequence from={s(at)} layout="none"><Pop><Pill bg={bg} color="#fff" size={54}>{txt}</Pill></Pop></Sequence>
+  );
   return (
-    <AbsoluteFill style={{background: theme.cream, alignItems: 'center', paddingTop: SAFE.top - 60}}>
-      <div style={{fontFamily: theme.font, fontWeight: 800, fontSize: 54, color: theme.accent, marginBottom: 18}}>Inspired by this Picnic recipe</div>
-      <div style={{transform: `translateY(${slide}px)`, width: 640, borderRadius: 32, overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,.3)'}}>
-        <Img src={staticFile('inspiration.png')} style={{width: '100%', display: 'block'}} />
-      </div>
-      <Sequence from={s(1.2)} layout="none">
-        <Pop style={{marginTop: 28}}>
-          <div style={{fontFamily: theme.font, fontWeight: 700, fontSize: 32, color: theme.ink, textAlign: 'center', marginBottom: 10}}>Original, per portion</div>
-          <div style={{display: 'flex', gap: 16}}>
-            <Chip value="541" label="kcal" />
-            <Chip value="38.7g" label="protein" />
-            <Chip value="29.8g" label="fat" />
-            <Chip value="27.5g" label="carbs" />
-          </div>
-        </Pop>
-      </Sequence>
-      <Sequence from={s(3.4)} layout="none">
-        <Pop style={{marginTop: 26}}>
-          <Pill bg={theme.ink} color="#fff" size={46}>I wanted it lighter, still<br />creamy + hearty</Pill>
-        </Pop>
-      </Sequence>
+    <AbsoluteFill style={{background: '#000', overflow: 'hidden'}}>
+      <Img src={staticFile('inspiration.png')} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom}) translateY(${panY}px)`}} />
+      <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)'}} />
+      <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', padding: `${SAFE.top}px ${SAFE.side}px 0`, gap: 18}}>
+        {line('I was inspired by this Picnic dish', 0, theme.accent)}
+        {line('but too high in calories + saturated fat for me', 1.6)}
+        {line('so I changed it', 3.4)}
+        {line('and this is what I actually made', 4.6, theme.accent)}
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };
@@ -134,21 +120,17 @@ export const Reel: React.FC = () => {
   const vid = (src: string, rate = 1, from = 0, volume = 0) => (
     <OffthreadVideo src={staticFile(`footage/${src}`)} startFrom={s(from)} playbackRate={rate} volume={volume} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
   );
-  const a = at(INGREDIENTS), b = at(INSPO);
-  const cookStart = s(t);
+  const o = at(HOOK), a = at(INGREDIENTS), b = at(INSPO);
   return (
     <AbsoluteFill style={{background: '#000'}}>
-      <Sequence {...a}>{vid('ingredients.mp4', 1, 0, 0.5)}<Sequence from={0} durationInFrames={s(HOOK)}><Hook /></Sequence><Ingredients /><Watermark /></Sequence>
+      <Sequence {...o}>{vid('plate.mp4', 1, 5, 0)}<Hook /><Watermark /></Sequence>
+      <Sequence {...a}>{vid('ingredients.mp4', 1, 0, 0)}<Ingredients /><Watermark /></Sequence>
       <Sequence {...b}><Inspiration /></Sequence>
-      {/* original kitchen sizzle bed under the cooking section */}
-      <Sequence from={cookStart} durationInFrames={COOK_TOTAL}>
-        <Audio src={staticFile('sizzle.wav')} loop volume={0.55} />
-      </Sequence>
       {COOK.map((clip, i) => {
         const seq = at(clipLen(clip));
         return (
           <Sequence key={clip.src} {...seq}>
-            {vid(clip.src, clip.rate, clip.from ?? 0, clip.rate <= 2 ? 0.5 : 0)}
+            {vid(clip.src, clip.rate, clip.from ?? 0, clip.rate <= 2 ? 0.3 : 0)}
             {clip.text ? <Step n={i + 1} text={clip.text} sub={clip.sub} /> : null}
             <Watermark />
           </Sequence>
