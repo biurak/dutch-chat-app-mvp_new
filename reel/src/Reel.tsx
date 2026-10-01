@@ -10,8 +10,16 @@ const HOOK = 3.0; // hook text over the ingredients shot
 const INGREDIENTS = 5.67; // full ingredients clip
 const INSPO = 3.2; // inspiration card
 const PAN = 1.8; // empty pan
-const OIL = 3.6; // oil spray (played at 1.5x)
-export const TOTAL_FRAMES = s(INGREDIENTS + INSPO + PAN + OIL);
+// Cooking clips: [file, source seconds, playback speed, step caption]
+const COOK: {src: string; dur: number; rate: number; text: string}[] = [
+  {src: 'oil-spray.mp4', dur: 5.37, rate: 1.5, text: 'A light spray of oil'},
+  {src: 'chicken-season.mp4', dur: 5.54, rate: 1.4, text: 'Chicken in + season'},
+  {src: 'chicken-pepper.mp4', dur: 7.22, rate: 1.5, text: 'Fresh pepper'},
+  {src: 'chicken-sear.mp4', dur: 20.03, rate: 2.5, text: 'Stir until it turns white'},
+  {src: 'chicken-cut.mp4', dur: 5.17, rate: 1.3, text: 'Cut into small pieces'},
+];
+const cookLen = (c: {dur: number; rate: number}) => c.dur / c.rate;
+export const TOTAL_FRAMES = s(INGREDIENTS + INSPO + PAN) + COOK.reduce((n, c) => n + s(cookLen(c)), 0);
 
 const Pop: React.FC<{children: React.ReactNode; delay?: number; style?: React.CSSProperties}> = ({children, delay = 0, style}) => {
   const frame = useCurrentFrame();
@@ -83,7 +91,7 @@ export const Reel: React.FC = () => {
     t += dur;
     return {from, durationInFrames: s(dur)};
   };
-  const a = at(INGREDIENTS), b = at(INSPO), c = at(PAN), d = at(OIL);
+  const a = at(INGREDIENTS), b = at(INSPO), c = at(PAN);
   const vid = (src: string, rate = 1) => (
     <OffthreadVideo src={staticFile(`footage/${src}`)} playbackRate={rate} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
   );
@@ -92,7 +100,16 @@ export const Reel: React.FC = () => {
       <Sequence {...a}>{vid('ingredients.mp4')}<Sequence from={0} durationInFrames={s(HOOK)}><Hook /></Sequence><Ingredients /><Watermark /></Sequence>
       <Sequence {...b}><Inspiration /></Sequence>
       <Sequence {...c}>{vid('pan-empty.mp4')}<Step n={1} text="Heat the pan" /><Watermark /></Sequence>
-      <Sequence {...d}>{vid('oil-spray.mp4', 1.5)}<Step n={2} text="A light spray of oil" /><Watermark /></Sequence>
+      {COOK.map((clip, i) => {
+        const seq = at(cookLen(clip));
+        return (
+          <Sequence key={clip.src} {...seq}>
+            {vid(clip.src, clip.rate)}
+            <Step n={i + 2} text={clip.text} />
+            <Watermark />
+          </Sequence>
+        );
+      })}
     </AbsoluteFill>
   );
 };
