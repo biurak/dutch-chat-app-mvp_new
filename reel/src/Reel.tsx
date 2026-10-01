@@ -18,13 +18,11 @@ const COOK: Clip[] = [
   {src: 'chicken-season.mp4', use: 5.5, rate: 1.8, text: 'Chicken cubes + salt'},
   {src: 'chicken-pepper.mp4', use: 7.2, rate: 2.4, text: 'Black pepper, fresh ground'},
   {src: 'chicken-sear.mp4', use: 18, rate: 3.4, text: 'Cook it on all sides'},
-  {src: 'chicken-cut.mp4', use: 5.1, rate: 1.7, text: 'Cut into small pieces'},
+  {src: 'chicken-cut.mp4', use: 5.1, rate: 1.7, text: 'Add some garlic'},
   {src: 'add-veg.mp4', use: 15, rate: 3, text: 'Sweet potato + courgette'},
   {src: 'add-water.mp4', use: 5.4, rate: 1.8, text: 'A glass of water, lid on', sub: 'cook until everything is tender'},
-  {src: 'mix.mp4', use: 23, rate: 5.5, text: 'Stir it all together'},
   {src: 'parmesan.mp4', use: 15, rate: 3.3, text: 'Grated Parmesan'},
   {src: 'cream.mp4', use: 21, rate: 4.5, text: 'Heat low, then 7% cooking cream', sub: 'added last so it never curdles'},
-  {src: 'serve.mp4', use: 10.5, rate: 3, text: 'Stir gently'},
   {src: 'plate.mp4', use: 16.8, rate: 3.4, text: 'Pan → plate'},
   {src: 'bite.mp4', use: 8, rate: 2, text: ''},
 ];
@@ -63,7 +61,7 @@ const Ingredients: React.FC = () => (
       </Sequence>
     ))}
     <Sequence from={4 + 5 * 5} layout="none">
-      <Pop style={{transformOrigin: 'left center'}}><Pill size={44} bg={theme.accent} color="#fff">+ salt, pepper, 7% cooking cream</Pill></Pop>
+      <Pop style={{transformOrigin: 'left center'}}><Pill size={44} bg={theme.accent} color="#fff">+ 7% cooking cream</Pill></Pop>
     </Sequence>
   </AbsoluteFill>
 );
