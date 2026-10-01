@@ -11,7 +11,7 @@ const INGREDIENTS = 4.2; // ingredients clip (trimmed)
 const INSPO = 6.4; // inspiration photo, full screen
 const END = 3.5; // end card
 
-type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string};
+type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string | string[]; noNum?: boolean};
 // `use` = seconds of source footage used, `rate` = playback speed. Shown length = use / rate.
 const COOK: Clip[] = [
   {src: 'oil-spray.mp4', use: 5.3, rate: 2, text: 'Stainless pan + a little olive oil spray'},
@@ -23,7 +23,7 @@ const COOK: Clip[] = [
   {src: 'add-water.mp4', use: 5.4, rate: 1.8, text: 'A glass of water, lid on', sub: 'cook until everything is tender'},
   {src: 'parmesan.mp4', use: 15, rate: 3.3, text: 'Grated Parmesan'},
   {src: 'cream.mp4', use: 21, rate: 4.5, text: 'Heat low, then 7% cooking cream', sub: 'added last so it never curdles'},
-  {src: 'plate.mp4', use: 16.8, rate: 3.4, text: 'Pan → plate'},
+  {src: 'plate.mp4', use: 16.8, rate: 2.1, noNum: true, text: 'This is how I make a hearty, creamy dish', sub: ['Creamy + hearty = easier to stick to your lifestyle with PCOS', 'Under 400 kcal · 37g protein per portion']},
   {src: 'bite.mp4', use: 8, rate: 2, text: ''},
 ];
 const clipLen = (c: Clip) => c.use / c.rate;
@@ -61,7 +61,7 @@ const Ingredients: React.FC = () => (
       </Sequence>
     ))}
     <Sequence from={4 + 5 * 5} layout="none">
-      <Pop style={{transformOrigin: 'left center'}}><Pill size={44} bg={theme.accent} color="#fff">+ 7% cooking cream</Pill></Pop>
+      <Pop style={{transformOrigin: 'left center'}}><Pill size={50}>7% cooking cream</Pill></Pop>
     </Sequence>
   </AbsoluteFill>
 );
@@ -88,12 +88,17 @@ const Inspiration: React.FC = () => {
   );
 };
 
-const Step: React.FC<{n: number; text: string; sub?: string}> = ({n, text, sub}) => (
-  <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: SAFE.top, gap: 14, padding: `${SAFE.top}px ${SAFE.side}px 0`}}>
-    <Pop><Pill size={54}><span style={{color: theme.accent}}>{n}</span> · {text}</Pill></Pop>
-    {sub ? <Sequence from={8} layout="none"><Pop><Pill size={38} bg="rgba(31,26,23,.88)" color="#fff">{sub}</Pill></Pop></Sequence> : null}
-  </AbsoluteFill>
-);
+const Step: React.FC<{n: number; text: string; sub?: string | string[]; noNum?: boolean}> = ({n, text, sub, noNum}) => {
+  const subs = sub === undefined ? [] : Array.isArray(sub) ? sub : [sub];
+  return (
+    <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: SAFE.top, gap: 14, padding: `${SAFE.top}px ${SAFE.side}px 0`}}>
+      <Pop><Pill size={54}>{noNum ? null : <><span style={{color: theme.accent}}>{n}</span> · </>}{text}</Pill></Pop>
+      {subs.map((x, i) => (
+        <Sequence key={x} from={8 + i * 14} layout="none"><Pop><Pill size={38} bg="rgba(31,26,23,.88)" color="#fff">{x}</Pill></Pop></Sequence>
+      ))}
+    </AbsoluteFill>
+  );
+};
 
 const Watermark: React.FC = () => (
   <div style={{position: 'absolute', top: SAFE.top - 110, left: SAFE.side, fontFamily: theme.font, fontWeight: 700, fontSize: 38, color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,.6)'}}>
@@ -129,7 +134,7 @@ export const Reel: React.FC = () => {
         return (
           <Sequence key={clip.src} {...seq}>
             {vid(clip.src, clip.rate, clip.from ?? 0, clip.rate <= 2 ? 0.3 : 0)}
-            {clip.text ? <Step n={i + 1} text={clip.text} sub={clip.sub} /> : null}
+            {clip.text ? <Step n={i + 1} text={clip.text} sub={clip.sub} noNum={clip.noNum} /> : null}
             <Watermark />
           </Sequence>
         );
