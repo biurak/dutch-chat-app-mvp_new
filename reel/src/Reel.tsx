@@ -9,7 +9,7 @@ const s = (sec: number) => Math.round(sec * FPS);
 const HOOK = 3.6; // finished dish + hook text
 const INGREDIENTS = 4.2; // ingredients clip (trimmed)
 const INSPO = 6.4; // inspiration photo, full screen
-const END = 3.5; // end card
+const END = 5.0; // end card
 
 type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string | string[]; noNum?: boolean};
 // `use` = seconds of source footage used, `rate` = playback speed. Shown length = use / rate.
@@ -45,9 +45,9 @@ const Pill: React.FC<{children: React.ReactNode; bg?: string; color?: string; si
 
 const Hook: React.FC = () => (
   <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: SAFE.top + 20, gap: 22}}>
-    <Pop><Pill bg={theme.accent} color="#fff" size={78}>PCOS + foodie</Pill></Pop>
-    <Pop delay={7}><Pill size={78}>+ losing weight?</Pill></Pop>
-    <Pop delay={16}><Pill bg="rgba(31,26,23,.88)" color="#fff" size={54}>This is what I actually eat</Pill></Pop>
+    <Pop><Pill bg={theme.accent} color="#fff" size={68}>I'm a foodie with PCOS</Pill></Pop>
+    <Pop delay={7}><Pill size={68}>trying to lose weight</Pill></Pop>
+    <Pop delay={16}><Pill bg="rgba(31,26,23,.88)" color="#fff" size={50}>and this is what I actually eat</Pill></Pop>
   </AbsoluteFill>
 );
 
@@ -79,7 +79,7 @@ const Inspiration: React.FC = () => {
       <Img src={staticFile('inspiration.png')} style={{width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${zoom}) translateY(${panY}px)`}} />
       <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%)'}} />
       <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', padding: `${SAFE.top}px ${SAFE.side}px 0`, gap: 18}}>
-        {line('I was inspired by this Picnic dish', 0, theme.accent)}
+        {line('I came across this recipe', 0, theme.accent)}
         {line('but too high in calories + saturated fat for me', 1.6)}
         {line('so I changed it', 3.4)}
         {line('and this is what I actually made', 4.6, theme.accent)}
@@ -107,9 +107,10 @@ const Watermark: React.FC = () => (
 );
 
 const EndCard: React.FC = () => (
-  <AbsoluteFill style={{background: theme.cream, justifyContent: 'center', alignItems: 'center', gap: 28, padding: SAFE.side}}>
-    <Pop><div style={{fontFamily: theme.font, fontWeight: 800, fontSize: 84, textAlign: 'center', color: theme.ink, lineHeight: 1.1}}>Full recipe + macros<br />in the description</div></Pop>
-    <Sequence from={10} layout="none"><Pop><Pill bg={theme.accent} color="#fff" size={56}>@recipebooster</Pill></Pop></Sequence>
+  <AbsoluteFill style={{background: theme.cream, justifyContent: 'center', alignItems: 'center', gap: 30, padding: SAFE.side}}>
+    <Pop><div style={{fontFamily: theme.font, fontWeight: 800, fontSize: 76, textAlign: 'center', color: theme.ink, lineHeight: 1.1}}>Full recipe + macros<br />in the description</div></Pop>
+    <Sequence from={14} layout="none"><Pop><div style={{fontFamily: theme.font, fontWeight: 600, fontSize: 46, textAlign: 'center', color: theme.ink, lineHeight: 1.25}}>I'm a foodie with PCOS on a<br />weight loss journey.<br />Stick around if you want to get inspired.</div></Pop></Sequence>
+    <Sequence from={30} layout="none"><Pop><Pill bg={theme.accent} color="#fff" size={56}>@recipebooster</Pill></Pop></Sequence>
   </AbsoluteFill>
 );
 
