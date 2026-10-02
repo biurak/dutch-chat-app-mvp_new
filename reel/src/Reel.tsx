@@ -9,13 +9,13 @@ const s = (sec: number) => Math.round(sec * FPS);
 const HOOK = 5.5; // finished dish + hook text
 const INGREDIENTS = 4.2; // ingredients clip (trimmed)
 
-type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string | string[]; noNum?: boolean; cta?: boolean};
+type Clip = {src: string; from?: number; use: number; rate: number; text: string; sub?: string | string[]; noNum?: boolean; cta?: boolean; cont?: boolean};
 // `use` = seconds of source footage used, `rate` = playback speed. Shown length = use / rate.
 const COOK: Clip[] = [
   {src: 'oil-spray.mp4', use: 5.3, rate: 2, text: 'Stainless pan + a little olive oil spray'},
-  {src: 'chicken-season.mp4', use: 5.5, rate: 1.8, text: 'Chicken cubes + salt'},
-  {src: 'chicken-pepper.mp4', use: 7.2, rate: 2.4, text: 'Black pepper, fresh ground'},
-  {src: 'chicken-sear.mp4', use: 18, rate: 3.4, text: 'Cook it on all sides'},
+  {src: 'chicken-season.mp4', use: 5.5, rate: 2.6, text: 'Chicken, salt + black pepper'},
+  {src: 'chicken-pepper.mp4', use: 7.2, rate: 3.2, text: 'Chicken, salt + black pepper', cont: true},
+  {src: 'chicken-sear.mp4', use: 18, rate: 5, text: 'Cook it on all sides'},
   {src: 'chicken-cut.mp4', use: 5.1, rate: 1.7, text: 'Add some garlic'},
   {src: 'add-veg.mp4', use: 15, rate: 3, text: 'Sweet potato + courgette'},
   {src: 'add-water.mp4', use: 5.4, rate: 1.4, text: 'A glass of water, lid on', sub: 'cook until everything is tender'},
@@ -64,11 +64,11 @@ const Ingredients: React.FC = () => (
   </AbsoluteFill>
 );
 
-const Step: React.FC<{n: number; text: string; sub?: string | string[]; noNum?: boolean}> = ({n, text, sub, noNum}) => {
+const Step: React.FC<{n: number; text: string; sub?: string | string[]; noNum?: boolean; still?: boolean}> = ({n, text, sub, noNum, still}) => {
   const subs = sub === undefined ? [] : Array.isArray(sub) ? sub : [sub];
   return (
     <AbsoluteFill style={{justifyContent: 'flex-start', alignItems: 'center', paddingTop: SAFE.top, gap: 14, padding: `${SAFE.top}px ${SAFE.side}px 0`}}>
-      <Pop><Pill size={54}>{noNum ? null : <><span style={{color: theme.accent}}>{n}</span> · </>}{text}</Pill></Pop>
+      <Pop delay={still ? -999 : 0}><Pill size={54}>{noNum ? null : <><span style={{color: theme.accent}}>{n}</span> · </>}{text}</Pill></Pop>
       {subs.map((x, i) => (
         <Sequence key={x} from={30 + i * 30} layout="none"><Pop><Pill size={46}>{x}</Pill></Pop></Sequence>
       ))}
@@ -119,7 +119,7 @@ export const Reel: React.FC = () => {
         return (
           <Sequence key={clip.src} {...seq}>
             {vid(clip.src, seq.durationInFrames, clip.rate, clip.from ?? 0)}
-            {clip.cta ? <Cta /> : <Step n={i + 1} text={clip.text} sub={clip.sub} noNum={clip.noNum} />}
+            {clip.cta ? <Cta /> : <Step n={COOK.slice(0, i + 1).filter((c) => !c.cont).length} text={clip.text} sub={clip.sub} noNum={clip.noNum} still={clip.cont} />}
             <Watermark />
           </Sequence>
         );
